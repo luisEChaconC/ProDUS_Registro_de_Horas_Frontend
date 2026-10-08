@@ -235,7 +235,7 @@ class ApiService {
     if (!refreshToken) return false;
 
     try {
-      const response = await fetch(`${this.baseUrl}/auth/refresh/`, {
+      const response = await fetch(`${this.baseUrl}/users/auth/refresh/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ refresh: refreshToken }),
@@ -263,7 +263,7 @@ class ApiService {
    */
   async login(credentials: LoginCredentials): Promise<AuthTokens> {
     const data = await this.request<AuthTokens>(
-      "/auth/login/",
+      "/users/auth/login/",
       {
         method: "POST",
         body: JSON.stringify(credentials),
@@ -279,7 +279,7 @@ class ApiService {
    */
   async checkIP(): Promise<CheckIPResponse> {
     return this.request<CheckIPResponse>(
-      "/auth/check-ip/",
+      "/users/auth/validate-institute-ip/",
       {
         method: "GET",
       },
@@ -300,7 +300,7 @@ class ApiService {
       allowed: boolean;
       client_ip?: string;
       message?: string;
-    }>("/auth/validate-institute-ip/", {});
+    }>("/users/auth/validate-institute-ip/", {});
   }
 
   /**
@@ -309,7 +309,7 @@ class ApiService {
   async logout(): Promise<void> {
     try {
       await this.request<{ detail: string }>(
-        "/auth/logout/",
+        "/users/auth/logout/",
         {
           method: "POST",
         },
@@ -337,7 +337,7 @@ class ApiService {
     const response = await this.request<{
       ok: boolean;
       user: AuthTokens["user"];
-    }>("/users/me/");
+    }>("/users/auth/me/");
     return response.user;
   }
 
@@ -347,7 +347,7 @@ class ApiService {
   async createAssistant(
     payload: CreateAssistantPayload,
   ): Promise<CreateAssistantResponse> {
-    return this.request<CreateAssistantResponse>("/assistants/", {
+    return this.request<CreateAssistantResponse>("/users/assistants/", {
       method: "POST",
       body: JSON.stringify(payload),
     });
@@ -355,7 +355,7 @@ class ApiService {
 
   // lista de asistentes
   async listAssistants(): Promise<ListAssistantsResponse> {
-    return this.request<ListAssistantsResponse>("/assistants/list/");
+    return this.request<ListAssistantsResponse>("/users/assistants/list/");
   }
 
   // ============================================
