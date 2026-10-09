@@ -7,6 +7,8 @@ interface DecodedToken {
   user_id: number
   username: string
   role?: string
+  is_admin?: boolean
+  is_superuser?: boolean
   exp: number
 }
 
@@ -70,9 +72,13 @@ export const useAuth = () => {
       const storedUser = api.getUser()
       if (storedUser) {
         userName.value = storedUser.full_name || storedUser.username
-        userRole.value = normalizeRole(storedUser.role)
+        userRole.value = storedUser.is_admin || decoded.is_admin || decoded.is_superuser
+          ? 'admin'
+          : normalizeRole(storedUser.role || decoded.role)
       } else {
-        userRole.value = normalizeRole(decoded.role)
+        userRole.value = decoded.is_admin || decoded.is_superuser
+          ? 'admin'
+          : normalizeRole(decoded.role)
       }
     } catch (e) {
       console.error('Error al cargar usuario:', e)
