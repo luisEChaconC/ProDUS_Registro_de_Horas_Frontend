@@ -1,56 +1,56 @@
-# Estructura de Componentes ProDUS
+# ProDUS Component Structure
 
-## 📁 Organización
+## 📁 Organization
 
 ```
 src/
-├── components/          # Componentes reutilizables
-│   ├── AppHeader.vue    # Encabezado de la app
-│   ├── AppButton.vue    # Botón genérico
-│   ├── InfoCard.vue     # Tarjeta de información
-│   ├── MenuButton.vue   # Botón de menú
-│   └── WelcomeBanner.vue # Banner de bienvenida
-├── styles/              # Estilos y temas
-│   ├── theme.ts        # Variables de color, espaciado, etc.
-│   └── global.ts       # Estilos globales
-├── composables/         # Lógica reutilizable
-│   └── useAuth.ts      # Autenticación y usuario
-├── config/             # Configuración
-│   └── roles.ts        # Definición de roles
-└── views/              # Vistas/páginas
+├── components/          # Reusable components
+│   ├── AppHeader.vue    # App header
+│   ├── AppButton.vue    # Generic button
+│   ├── InfoCard.vue     # Information card
+│   ├── MenuButton.vue   # Menu button
+│   └── WelcomeBanner.vue # Welcome banner
+├── styles/              # Styles and themes
+│   ├── theme.ts        # Color, spacing, and other variables
+│   └── global.ts       # Global styles
+├── composables/         # Reusable logic
+│   └── useAuth.ts      # Authentication and user data
+├── config/             # Configuration
+│   └── roles.ts        # Role definitions
+└── views/              # Views/pages
     └── HomeView.vue    # Home page
 ```
 
-## 🎨 Componentes Disponibles
+## 🎨 Available Components
 
 ### AppHeader
-Encabezado estándar de la aplicación.
+Standard application header.
 
 ```vue
 <AppHeader 
   title="ProDUS" 
-  subtitle="Registro de Horas"
-  user-role="Administrador"
-  user-name="Juan Pérez"
+  subtitle="Hours Log"
+  user-role="Administrator"
+  user-name="John Doe"
   @logout="handleLogout"
 />
 ```
 
 **Props:**
-- `title`: string - Título principal
-- `subtitle`: string - Subtítulo
-- `userRole`: string - Rol del usuario
-- `userName`: string - Nombre del usuario
-- **Eventos:** `@logout`
+- `title`: string - Main title
+- `subtitle`: string - Subtitle
+- `userRole`: string - User role
+- `userName`: string - User name
+- **Events:** `@logout`
 
 ---
 
 ### AppButton
-Botón reutilizable con variantes.
+Reusable button with variants.
 
 ```vue
 <AppButton variant="primary" size="md">
-  Enviar
+  Submit
 </AppButton>
 ```
 
@@ -62,56 +62,56 @@ Botón reutilizable con variantes.
 ---
 
 ### InfoCard
-Tarjeta para mostrar información estática.
+Card for displaying static information.
 
 ```vue
 <InfoCard 
-  label="Horas Registradas" 
+  label="Logged Hours"
   value="24" 
 />
 ```
 
 **Props:**
-- `label`: string - Etiqueta
-- `value`: string | number - Valor a mostrar
+- `label`: string - Label
+- `value`: string | number - Value to display
 
 ---
 
 ### MenuButton
-Botón para menú con icono y etiqueta.
+Menu button with an icon and label.
 
 ```vue
 <MenuButton 
   icon="⏱️" 
-  label="Registro de Horas"
+  label="Hours Log"
   @click="handleClick"
 />
 ```
 
 **Props:**
-- `icon`: string - Emoji o icono
-- `label`: string - Etiqueta del botón
-- **Eventos:** `@click`
+- `icon`: string - Emoji or icon
+- `label`: string - Button label
+- **Events:** `@click`
 
 ---
 
 ### WelcomeBanner
-Banner de bienvenida con gradiente.
+Welcome banner with a gradient.
 
 ```vue
 <WelcomeBanner 
-  title="Bienvenido, Juan" 
-  subtitle="Acceso a tus herramientas de administrador"
+  title="Welcome, John"
+  subtitle="Access your administrator tools"
 />
 ```
 
 **Props:**
-- `title`: string - Título
-- `subtitle`: string - Subtítulo
+- `title`: string - Title
+- `subtitle`: string - Subtitle
 
-## 🎨 Tema de Colores
+## 🎨 Color Theme
 
-Encontrados en `src/styles/theme.ts`:
+Defined in `src/styles/theme.ts`:
 
 ```typescript
 colors = {
@@ -121,11 +121,11 @@ colors = {
   success: '#10b981',
   warning: '#f59e0b',
   error: '#ef4444',
-  // ... más colores
+  // ... more colors
 }
 ```
 
-## 📐 Espaciados
+## 📐 Spacing
 
 ```typescript
 spacing = {
@@ -140,31 +140,31 @@ spacing = {
 ## 🔄 Composables
 
 ### useAuth
-Maneja autenticación y datos del usuario.
+Handles authentication and user data.
 
 ```typescript
 const { 
-  userRole,      // Rol actual
-  userName,      // Nombre del usuario
-  isAuthenticated, // ¿Está autenticado?
-  logout,        // Cerrar sesión
-  checkPermission, // Verificar permiso
-  checkFeature   // Verificar feature
+  userRole,      // Current role
+  userName,      // User name
+  isAuthenticated, // Is authenticated?
+  logout,        // Log out
+  checkPermission, // Check permission
+  checkFeature   // Check feature
 } = useAuth()
 ```
 
-## ✅ Buenas Prácticas
+## ✅ Best Practices
 
-1. **No duplicar estilos**: Usa componentes base en lugar de repetir estilos
-2. **Usar el tema**: Importa colores de `theme.ts` en lugar de hardcodearlos
-3. **Componentes pequeños**: Los componentes deben ser simples y enfocados
-4. **Props bien tipadas**: Siempre usa TypeScript para las props
-5. **Eventos nombrados claramente**: Sigue la convención Vue para nombres de eventos
+1. **Do not duplicate styles**: Use base components instead of repeating styles
+2. **Use the theme**: Import colors from `theme.ts` instead of hardcoding them
+3. **Small components**: Components should be simple and focused
+4. **Well-typed props**: Always use TypeScript for props
+5. **Clearly named events**: Follow the Vue convention for event names
 
-## 🚀 Agregando un nuevo componente
+## 🚀 Adding a New Component
 
-1. Crea el archivo en `src/components/`
-2. Usa colores y espaciados de `theme.ts`
-3. Exporta desde el archivo principal
-4. Importa en la vista donde lo necesites
-5. Documenta las props en este archivo
+1. Create the file in `src/components/`
+2. Use colors and spacing from `theme.ts`
+3. Export it from the main file
+4. Import it into the view where you need it
+5. Document its props in this file
