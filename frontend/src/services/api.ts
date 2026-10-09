@@ -107,6 +107,13 @@ export interface WorkSessionClosePayload {
   break_minutes?: number;
 }
 
+export interface WorkSessionHistoryResponse {
+  ok: boolean;
+  period: 'day' | 'week' | 'month';
+  total_seconds: number;
+  sessions: TimeLogSession[];
+}
+
 export interface ProjectOption {
   id: number;
   name: string;
@@ -421,6 +428,14 @@ class ApiService {
     return this.request<{ ok: boolean; closed_session: TimeLogSession; server_now: string }>(
       "/timelogs/work-session/close/",
       { method: "POST", body: JSON.stringify(payload) },
+    );
+  }
+
+  async getWorkSessionHistory(
+    period: 'day' | 'week' | 'month' = 'month',
+  ): Promise<WorkSessionHistoryResponse> {
+    return this.request<WorkSessionHistoryResponse>(
+      `/timelogs/work-session/history/?period=${period}`,
     );
   }
 
