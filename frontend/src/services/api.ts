@@ -41,7 +41,6 @@ interface CreateAssistantPayload {
   start_date: string;
   end_date?: string | null;
   weekly_hours: number;
-  is_active?: boolean;
   // Añadir esto nuevo:
   schedule_blocks: Array<{
     day_of_week: string;
