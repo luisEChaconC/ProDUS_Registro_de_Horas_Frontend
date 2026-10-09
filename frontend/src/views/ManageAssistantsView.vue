@@ -158,8 +158,6 @@ const onConfirmAssistantForm = async (formData: Record<string, any>) => {
       start_date: formData.start_date ? new Date(formData.start_date as string).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
       end_date: formData.end_date ? new Date(formData.end_date as string).toISOString().split('T')[0] : null,
       weekly_hours: Number(formData.weekly_hours), 
-      is_active: formData.is_active ?? true, 
-      
       // Adjuntar los horarios sin work_minutes
       schedule_blocks: confirmedBlocks.map(block => ({
          day_of_week: block.day_of_week,

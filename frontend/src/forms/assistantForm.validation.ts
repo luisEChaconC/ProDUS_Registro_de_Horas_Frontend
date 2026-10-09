@@ -9,7 +9,6 @@ export const assistantFormSchema = z.object({
     .regex(/[A-Z]/, 'Debe tener al menos una mayúscula')
     .regex(/\d/, 'Debe tener al menos un número'),
   password_confirm: z.string(),
-  is_active: z.boolean().optional().default(true),
   
   // Assistant fields
   start_date: z.string().refine((date) => !isNaN(Date.parse(date)), 'Fecha inválida'),

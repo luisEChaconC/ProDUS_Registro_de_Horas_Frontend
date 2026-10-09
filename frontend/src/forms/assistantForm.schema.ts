@@ -44,16 +44,6 @@ const userFields = [
     span: 1,
     spaceAfter: 'lg'
   },
-  {
-    name: 'is_active',
-    label: 'Activo',
-    type: 'checkbox',
-    required: false,
-    defaultValue: true,
-    order: 9,
-    span: 2,
-    spaceAfter: 'none'
-  }
 ]
 
 // ============================================
