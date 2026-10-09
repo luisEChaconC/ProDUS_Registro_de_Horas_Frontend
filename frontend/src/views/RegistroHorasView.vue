@@ -52,7 +52,7 @@
             <label class="full-width">Actividades realizadas
               <textarea v-model="closeForm.activities" rows="4" placeholder="Describe brevemente tu trabajo"></textarea>
             </label>
-            <label>Minutos de descanso
+            <label>Minutos de almuerzo
               <input v-model.number="closeForm.break_minutes" type="number" min="0" step="1" />
             </label>
             <label>Notas

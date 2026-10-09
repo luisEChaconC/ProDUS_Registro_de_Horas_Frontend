@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from '@/composables/useAuth'
 import { ROLES } from '@/config/roles'
@@ -13,7 +13,13 @@ const router = useRouter()
 const { userRole, userName, logout } = useAuth()
 const assistantsCount = ref(0)
 const registeredHours = ref('0')
-const registeredHoursPeriod = ref<'day' | 'week' | 'month'>('month')
+const registeredHoursPeriod = ref<'day' | 'week' | 'month'>('day')
+const activeSession = ref(false)
+const elapsedSeconds = ref(0)
+const sessionLoading = ref(true)
+const sessionActionLoading = ref(false)
+const sessionError = ref('')
+let sessionTimer: ReturnType<typeof setInterval> | undefined
 
 const periodLabels = {
   day: 'Hoy',
@@ -39,13 +45,57 @@ const loadRegisteredHours = async () => {
     registeredHours.value = '0'
     console.warn('No se pudo cargar el total de horas registradas:', error)
   }
-
-  watch(registeredHoursPeriod, () => {
-    if (userRole.value === 'asistente') {
-      void loadRegisteredHours()
-    }
-  })
 }
+
+const formattedElapsed = computed(() => {
+  const hours = Math.floor(elapsedSeconds.value / 3600).toString().padStart(2, '0')
+  const minutes = Math.floor((elapsedSeconds.value % 3600) / 60).toString().padStart(2, '0')
+  const seconds = (elapsedSeconds.value % 60).toString().padStart(2, '0')
+  return `${hours}:${minutes}:${seconds}`
+})
+
+const startSessionTimer = () => {
+  if (sessionTimer) clearInterval(sessionTimer)
+  sessionTimer = setInterval(() => {
+    elapsedSeconds.value += 1
+  }, 1000)
+}
+
+const loadActiveSession = async () => {
+  sessionLoading.value = true
+  sessionError.value = ''
+  try {
+    const response = await api.getCurrentWorkSession()
+    activeSession.value = response.active_session
+    elapsedSeconds.value = response.elapsed_seconds || response.session?.elapsed_seconds || 0
+    if (activeSession.value) startSessionTimer()
+  } catch (error) {
+    sessionError.value = error instanceof Error ? error.message : 'No se pudo consultar la jornada.'
+  } finally {
+    sessionLoading.value = false
+  }
+}
+
+const startSession = async () => {
+  sessionActionLoading.value = true
+  sessionError.value = ''
+  try {
+    const response = await api.startWorkSession()
+    activeSession.value = true
+    elapsedSeconds.value = response.session.elapsed_seconds
+    startSessionTimer()
+  } catch (error) {
+    sessionError.value = error instanceof Error ? error.message : 'No se pudo iniciar la jornada.'
+  } finally {
+    sessionActionLoading.value = false
+  }
+}
+
+watch(registeredHoursPeriod, () => {
+  if (userRole.value === 'asistente') {
+    void loadRegisteredHours()
+  }
+})
 
 watch(
   () => userRole.value,
@@ -58,12 +108,19 @@ watch(
 
     if (role === 'asistente') {
       loadRegisteredHours()
+      void loadActiveSession()
     } else {
       registeredHours.value = '0'
+      activeSession.value = false
+      elapsedSeconds.value = 0
     }
   },
   { immediate: true }
 )
+
+onBeforeUnmount(() => {
+  if (sessionTimer) clearInterval(sessionTimer)
+})
 
 // Opciones de menú según el rol
 const menuOptions = computed(() => {
@@ -160,6 +217,26 @@ const handleLogout = async () => {
             </div>
             <strong>{{ registeredHours }}</strong>
             <small>{{ periodLabels[registeredHoursPeriod] }} · horas efectivas</small>
+          </div>
+          <div class="session-card">
+            <div>
+              <span class="session-label">Jornada actual</span>
+              <strong :class="activeSession ? 'session-active' : 'session-inactive'">
+                {{ sessionLoading ? 'Consultando...' : activeSession ? 'Jornada activa' : 'Sin jornada activa' }}
+              </strong>
+              <span v-if="activeSession" class="session-elapsed">{{ formattedElapsed }}</span>
+            </div>
+            <button
+              v-if="!activeSession"
+              type="button"
+              class="start-session-button"
+              :disabled="sessionLoading || sessionActionLoading"
+              @click="startSession"
+            >
+              {{ sessionActionLoading ? 'Iniciando...' : 'Iniciar jornada' }}
+            </button>
+            <span v-else class="session-hint">Finaliza la jornada desde Registro de Horas</span>
+            <span v-if="sessionError" class="session-error" role="alert">{{ sessionError }}</span>
           </div>
           <InfoCard label="Pendiente de Valoración" value="0" />
         </div>
@@ -268,6 +345,76 @@ const handleLogout = async () => {
 
 .hours-card small {
   color: #6b7280;
+}
+
+.session-card {
+  padding: 1.5rem 2rem;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  border-left: 4px solid #10b981;
+}
+
+.session-label {
+  display: block;
+  color: #666;
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.session-card strong {
+  display: block;
+  margin-top: 0.5rem;
+  font-size: 1.25rem;
+}
+
+.session-active {
+  color: #059669;
+}
+
+.session-inactive {
+  color: #374151;
+}
+
+.session-elapsed {
+  display: block;
+  margin-top: 0.35rem;
+  color: #003d7a;
+  font-size: 1.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.start-session-button {
+  margin-top: 1.25rem;
+  border: 0;
+  border-radius: 7px;
+  padding: 0.75rem 1.25rem;
+  background: #0052a3;
+  color: white;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+}
+
+.start-session-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.session-hint {
+  display: block;
+  margin-top: 1rem;
+  color: #6b7280;
+  font-size: 0.85rem;
+}
+
+.session-error {
+  display: block;
+  margin-top: 0.75rem;
+  color: #b91c1c;
+  font-size: 0.85rem;
 }
 
 @media (max-width: 768px) {
