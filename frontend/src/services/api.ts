@@ -114,6 +114,29 @@ export interface WorkSessionHistoryResponse {
   sessions: TimeLogSession[];
 }
 
+export interface ScheduleBlock {
+  id: number;
+  day_of_week: string;
+  start_time: string;
+  end_time: string;
+}
+
+export interface MyScheduleResponse {
+  ok: boolean;
+  schedule: {
+    id: number;
+    valid_from: string;
+    valid_to: string | null;
+    blocks: ScheduleBlock[];
+  } | null;
+}
+
+export interface WorkSessionReportsResponse {
+  ok: boolean;
+  total_seconds: number;
+  results: TimeLogSession[];
+}
+
 export interface ProjectOption {
   id: number;
   name: string;
@@ -439,6 +462,21 @@ class ApiService {
     );
   }
 
+  async getMySchedule(): Promise<MyScheduleResponse> {
+    return this.request<MyScheduleResponse>("/schedules/my/");
+  }
+
+  async getWorkSessionReports(params?: {
+    start_date?: string;
+    end_date?: string;
+  }): Promise<WorkSessionReportsResponse> {
+    const query = new URLSearchParams();
+    if (params?.start_date) query.set("start_date", params.start_date);
+    if (params?.end_date) query.set("end_date", params.end_date);
+    const suffix = query.toString() ? `?${query.toString()}` : "";
+    return this.request<WorkSessionReportsResponse>(`/timelogs/reports/${suffix}`);
+  }
+
   async getActiveProjects(): Promise<OptionsResponse<ProjectOption>> {
     return this.request<OptionsResponse<ProjectOption>>("/projects/active/");
   }
@@ -519,10 +557,6 @@ class ApiService {
   /**
    * Obtiene el horario del usuario.
    */
-  async getMySchedule(): Promise<unknown> {
-    return this.request("/schedules/");
-  }
-
   // ============================================
   // GENERIC METHODS
   // ============================================
