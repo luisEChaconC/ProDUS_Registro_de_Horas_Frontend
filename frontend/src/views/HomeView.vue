@@ -112,7 +112,7 @@ const handleLogout = async () => {
             @click="navigateTo(option.path)"
           />
           <MenuButton
-            v-if="userRole === 'coordinador'"
+            v-if="userRole === 'coordinador' || userRole === 'admin'"
             label="Gestionar Asistentes"
             @click="navigateTo('/gestionar-asistentes')"
           />

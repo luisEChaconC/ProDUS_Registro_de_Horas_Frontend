@@ -54,6 +54,7 @@ const getUserRoleFromToken = (): string | null => {
         .join('')
     );
     const decoded = JSON.parse(jsonPayload);
+    if (decoded.is_admin || decoded.is_superuser) return 'admin';
     return decoded.role || null;
   } catch {
     return null;

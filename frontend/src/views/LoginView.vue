@@ -17,7 +17,9 @@ async function handleLogin() {
     // Redirige al home si el login es exitoso
     router.push('/home')
   } catch (error) {
-    errorMessage.value = 'Usuario o contraseña incorrectos'
+    errorMessage.value = error instanceof Error && error.message
+      ? error.message
+      : 'Usuario o contraseña incorrectos'
   } finally {
     loading.value = false
   }
