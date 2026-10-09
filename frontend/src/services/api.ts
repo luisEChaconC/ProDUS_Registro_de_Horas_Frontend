@@ -80,6 +80,49 @@ interface ListAssistantsResponse {
   results: AssistantListItem[];
 }
 
+export interface TimeLogSession {
+  id: number;
+  check_in: string;
+  check_out: string | null;
+  status_code: string;
+  work_description: string;
+  break_minutes: number;
+  elapsed_seconds: number;
+  is_active: boolean;
+}
+
+export interface WorkSessionCurrentResponse {
+  ok: boolean;
+  active_session: boolean;
+  server_now: string;
+  elapsed_seconds?: number;
+  session: TimeLogSession | null;
+}
+
+export interface WorkSessionClosePayload {
+  project_id?: number | null;
+  manager_user_id?: number | null;
+  notes?: string;
+  activities?: string;
+  break_minutes?: number;
+}
+
+export interface ProjectOption {
+  id: number;
+  name: string;
+}
+
+export interface CoordinatorOption {
+  id: number;
+  full_name: string;
+  username: string;
+}
+
+interface OptionsResponse<T> {
+  ok: boolean;
+  results: T[];
+}
+
 
 
 // Storage keys
@@ -356,6 +399,37 @@ class ApiService {
   // lista de asistentes
   async listAssistants(): Promise<ListAssistantsResponse> {
     return this.request<ListAssistantsResponse>("/users/assistants/list/");
+  }
+
+  // ============================================
+  // TIME LOG ENDPOINTS
+  // ============================================
+  async getCurrentWorkSession(): Promise<WorkSessionCurrentResponse> {
+    return this.request<WorkSessionCurrentResponse>("/timelogs/work-session/current/");
+  }
+
+  async startWorkSession(): Promise<{ ok: boolean; session: TimeLogSession }> {
+    return this.request<{ ok: boolean; session: TimeLogSession }>(
+      "/timelogs/work-session/start/",
+      { method: "POST", body: JSON.stringify({}) },
+    );
+  }
+
+  async closeWorkSession(
+    payload: WorkSessionClosePayload,
+  ): Promise<{ ok: boolean; closed_session: TimeLogSession; server_now: string }> {
+    return this.request<{ ok: boolean; closed_session: TimeLogSession; server_now: string }>(
+      "/timelogs/work-session/close/",
+      { method: "POST", body: JSON.stringify(payload) },
+    );
+  }
+
+  async getActiveProjects(): Promise<OptionsResponse<ProjectOption>> {
+    return this.request<OptionsResponse<ProjectOption>>("/projects/active/");
+  }
+
+  async getActiveCoordinators(): Promise<OptionsResponse<CoordinatorOption>> {
+    return this.request<OptionsResponse<CoordinatorOption>>("/projects/coordinators/active/");
   }
 
   // ============================================
