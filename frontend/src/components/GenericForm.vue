@@ -16,6 +16,7 @@ interface GenericFormField {
   pattern?: string
   patternMessage?: string
   options?: GenericFormOption[]
+  multiple?: boolean
   order?: number
   span?: number
   spaceAfter?: string
@@ -28,6 +29,7 @@ const props = withDefaults(defineProps<{
   fields: GenericFormField[]
   confirmText?: string
   cancelText?: string
+  initialValues?: Record<string, unknown>
 }>(), {
   confirmText: 'Confirmar',
   cancelText: 'Cancelar'
@@ -64,8 +66,9 @@ const initializeForm = () => {
       return
     }
 
-    formData[field.name] = ''
+    formData[field.name] = field.multiple ? [] : ''
   })
+  Object.assign(formData, props.initialValues || {})
 }
 
 watch(
@@ -180,6 +183,7 @@ const getPasswordInputType = (fieldName: string): string => {
           v-model="formData[field.name]"
           class="field-input"
           :disabled="field.disabled"
+          :multiple="field.multiple"
         >
           <option value="">Selecciona una opción</option>
           <option
