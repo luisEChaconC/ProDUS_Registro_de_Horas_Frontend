@@ -156,13 +156,12 @@ const menuOptions = computed(() => {
     ],
     coordinador: [
       { label: 'Gestionar Equipo', path: '/equipo' },
-      { label: 'Reportes del Proyecto', path: '/reportes-proyecto' },
-      { label: 'Horarios Equipo', path: '/horarios-equipo' }
+      { label: 'Reportes del Proyecto', path: '/reportes-proyecto' }
     ],
     admin: [
       { label: 'Gestionar Usuarios', path: '/usuarios' },
+      { label: 'Gestionar Asistentes', path: '/gestionar-asistentes' },
       { label: 'Configuración Sistema', path: '/configuracion' },
-      { label: 'Reportes Globales', path: '/reportes-globales' },
       { label: 'Rangos IP Permitidos', path: '/rangos-ip' }
     ]
   }
@@ -215,11 +214,6 @@ const handleLogout = async () => {
             :label="option.label"
             @click="navigateTo(option.path)"
           />
-          <MenuButton
-            v-if="userRole === 'coordinador' || userRole === 'admin'"
-            label="Gestionar Asistentes"
-            @click="navigateTo('/gestionar-asistentes')"
-          />
         </div>
       </section>
 
@@ -271,7 +265,6 @@ const handleLogout = async () => {
       <section class="info-section" v-if="userRole === 'admin'">
         <h3 class="section-title">Información del Sistema</h3>
         <div class="info-cards">
-          <InfoCard label="Usuarios Activos" :value="String(activeUsersCount)" />
           <InfoCard label="Asistentes Activos" :value="String(activeAssistantsCount)" />
           <InfoCard label="Proyectos Activos" :value="String(activeProjectsCount)" />
         </div>
