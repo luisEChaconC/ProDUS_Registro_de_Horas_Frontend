@@ -79,6 +79,24 @@ interface ListAssistantsResponse {
   results: AssistantListItem[];
 }
 
+export interface AdminSummaryResponse {
+  ok: boolean;
+  active_users: number;
+  active_assistants: number;
+  active_projects: number;
+}
+
+export interface UserListItem {
+  id: number;
+  full_name: string;
+  username: string;
+  role: string | null;
+  is_admin: boolean;
+  is_active: boolean;
+  needs_password_change: boolean;
+  created_at: string;
+}
+
 export interface TimeLogSession {
   id: number;
   check_in: string;
@@ -428,6 +446,27 @@ class ApiService {
   // lista de asistentes
   async listAssistants(): Promise<ListAssistantsResponse> {
     return this.request<ListAssistantsResponse>("/users/assistants/list/");
+  }
+
+  async getAdminSummary(): Promise<AdminSummaryResponse> {
+    return this.request<AdminSummaryResponse>("/users/admin/summary/");
+  }
+
+  async listUsers(): Promise<UserListItem[]> {
+    return this.request<UserListItem[]>("/users/users/");
+  }
+
+  async updateUser(id: number, payload: {
+    full_name: string;
+    username: string;
+    role: string;
+    is_active: boolean;
+  }): Promise<UserListItem> {
+    return this.patch<UserListItem>(`/users/users/${id}/`, payload);
+  }
+
+  async deleteUser(id: number): Promise<void> {
+    await this.delete(`/users/users/${id}/`);
   }
 
   // ============================================
