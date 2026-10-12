@@ -161,8 +161,8 @@ const menuOptions = computed(() => {
     admin: [
       { label: 'Gestionar Usuarios', path: '/usuarios' },
       { label: 'Gestionar Asistentes', path: '/gestionar-asistentes' },
-      { label: 'Configuración Sistema', path: '/configuracion' },
-      { label: 'Rangos IP Permitidos', path: '/rangos-ip' }
+      { label: 'Gestionar Coordinadores', path: '/gestionar-coordinadores' },
+      { label: 'Gestionar Proyectos', path: '/gestionar-proyectos' }
     ]
   }
 
