@@ -72,7 +72,7 @@ const assistantFields = [
     name: 'weekly_hours',
     label: 'Horas semanales',
     type: 'number',
-    placeholder: 'Ej: 40',
+    placeholder: 'Ej: 10',
     required: true,
     order: 8,
     span: 1,

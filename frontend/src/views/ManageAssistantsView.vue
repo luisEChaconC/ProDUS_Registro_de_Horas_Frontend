@@ -61,7 +61,7 @@ const editForm = reactive({
   is_active: true,
   start_date: '',
   end_date: '',
-  weekly_hours: 40,
+  weekly_hours: 10,
   schedule_blocks: [] as ScheduleBlockInput[],
 })
 
