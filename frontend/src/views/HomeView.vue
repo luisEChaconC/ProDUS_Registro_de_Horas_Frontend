@@ -220,16 +220,6 @@ const handleLogout = async () => {
       <section class="info-section" v-if="userRole === 'asistente'">
         <h3 class="section-title">Tu Información</h3>
         <div class="info-cards">
-          <div class="hours-card">
-            <div class="hours-card-header">
-              <span>Horas registradas</span>
-              <select v-model="registeredHoursPeriod" aria-label="Periodo de horas registradas">
-                <option v-for="(label, period) in periodLabels" :key="period" :value="period">{{ label }}</option>
-              </select>
-            </div>
-            <strong>{{ registeredHours }}</strong>
-            <small>{{ periodLabels[registeredHoursPeriod] }} · horas efectivas</small>
-          </div>
           <div class="session-card">
             <div>
               <span class="session-label">Jornada actual</span>
@@ -249,6 +239,16 @@ const handleLogout = async () => {
             </button>
             <span v-else class="session-hint">Finaliza la jornada desde Registro de Horas</span>
             <span v-if="sessionError" class="session-error" role="alert">{{ sessionError }}</span>
+          </div>
+          <div class="hours-card">
+            <div class="hours-card-header">
+              <span>Horas registradas</span>
+              <select v-model="registeredHoursPeriod" aria-label="Periodo de horas registradas">
+                <option v-for="(label, period) in periodLabels" :key="period" :value="period">{{ label }}</option>
+              </select>
+            </div>
+            <strong>{{ registeredHours }}</strong>
+            <small>{{ periodLabels[registeredHoursPeriod] }} · horas efectivas</small>
           </div>
           <InfoCard label="Pendiente de Valoración" value="0" />
         </div>
