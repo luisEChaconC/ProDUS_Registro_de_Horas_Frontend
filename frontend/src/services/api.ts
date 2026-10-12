@@ -86,6 +86,27 @@ export interface AdminSummaryResponse {
   active_projects: number;
 }
 
+export interface AssistantAdminDetail {
+  id: number;
+  username: string;
+  full_name: string;
+  is_active: boolean;
+  start_date: string;
+  end_date: string | null;
+  weekly_hours: number;
+  schedule_blocks: ScheduleBlockInput[];
+}
+
+export interface ScheduleBlockInput {
+  day_of_week: string;
+  start_time: string;
+  end_time: string;
+}
+
+export interface AssistantReport extends TimeLogSession {
+  id: number;
+}
+
 export interface UserListItem {
   id: number;
   full_name: string;
@@ -450,6 +471,46 @@ class ApiService {
 
   async getAdminSummary(): Promise<AdminSummaryResponse> {
     return this.request<AdminSummaryResponse>("/users/admin/summary/");
+  }
+
+  async getAssistantAdminDetail(id: number): Promise<AssistantAdminDetail> {
+    const response = await this.request<{ ok: boolean; assistant: AssistantAdminDetail }>(
+      `/users/admin/assistants/${id}/`,
+    );
+    return response.assistant;
+  }
+
+  async updateAssistantAdminDetail(
+    id: number,
+    payload: Partial<AssistantAdminDetail>,
+  ): Promise<AssistantAdminDetail> {
+    const response = await this.patch<{ ok: boolean; assistant: AssistantAdminDetail }>(
+      `/users/admin/assistants/${id}/`,
+      payload,
+    );
+    return response.assistant;
+  }
+
+  async getAssistantReports(id: number): Promise<AssistantReport[]> {
+    const response = await this.request<{ ok: boolean; results: AssistantReport[] }>(
+      `/timelogs/admin/assistants/${id}/reports/`,
+    );
+    return response.results;
+  }
+
+  async updateAssistantReport(id: number, report: Partial<AssistantReport> & { id: number }): Promise<AssistantReport> {
+    const response = await this.patch<{ ok: boolean; report: AssistantReport }>(
+      `/timelogs/admin/assistants/${id}/reports/`,
+      report,
+    );
+    return response.report;
+  }
+
+  async deleteAssistantReport(id: number, reportId: number): Promise<void> {
+    await this.request(`/timelogs/admin/assistants/${id}/reports/`, {
+      method: 'DELETE',
+      body: JSON.stringify({ id: reportId }),
+    });
   }
 
   async listUsers(): Promise<UserListItem[]> {
