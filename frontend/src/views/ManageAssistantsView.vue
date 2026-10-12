@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AppHeader from '@/components/AppHeader.vue'
 import AppButton from '@/components/AppButton.vue'
@@ -9,7 +9,7 @@ import ScheduleBuilder from '@/components/ScheduleBuilder.vue'
 import ErrorModal from '@/components/ErrorModal.vue'
 import { assistantFormFields } from '@/forms/assistantForm.schema'
 import { useAuth } from '@/composables/useAuth'
-import api from '@/services/api'
+import api, { type AssistantAdminDetail, type AssistantReport, type ScheduleBlockInput } from '@/services/api'
 
 const router = useRouter()
 const { userRole, userName, logout } = useAuth()
@@ -30,7 +30,8 @@ const assistantColumns = [
 ]
 
 const assistantActions = [
-  { key: 'edit', label: 'Editar' }
+  { key: 'edit', label: 'Editar' },
+  { key: 'reports', label: 'Ver reportes' }
   // { key: 'delete', label: 'Eliminar', disabledField: 'canDelete' }
 ]
 
@@ -44,6 +45,25 @@ interface AssistantRow {
 }
 
 const assistants = ref<AssistantRow[]>([])
+const editingAssistant = ref<AssistantAdminDetail | null>(null)
+const assistantReports = ref<AssistantReport[]>([])
+const showEditModal = ref(false)
+const showReportsModal = ref(false)
+const reportsAssistant = ref<AssistantRow | null>(null)
+const reportsLoading = ref(false)
+const reportsError = ref('')
+const editLoading = ref(false)
+const editSaving = ref(false)
+const editError = ref('')
+const editForm = reactive({
+  username: '',
+  full_name: '',
+  is_active: true,
+  start_date: '',
+  end_date: '',
+  weekly_hours: 40,
+  schedule_blocks: [] as ScheduleBlockInput[],
+})
 
 const getScheduleBlocks = (storageKey: string): unknown[] => {
   const rawValue = localStorage.getItem(storageKey)
@@ -132,8 +152,114 @@ const onConfirmScheduleModal = () => {
 }
 
 const onAssistantAction = (payload: { actionKey: string; item: Record<string, unknown> }) => {
-  console.log(`Acción: ${payload.actionKey} en asistente:`, payload.item)
-  // TODO: Implementar lógica de editar/eliminar
+  if (payload.actionKey === 'edit') {
+    void openAssistantEditor(Number(payload.item.id))
+  } else if (payload.actionKey === 'reports') {
+    void openAssistantReports(Number(payload.item.id))
+  }
+}
+
+const openAssistantEditor = async (assistantId: number) => {
+  showEditModal.value = true
+  editLoading.value = true
+  editError.value = ''
+  try {
+    const detail = await api.getAssistantAdminDetail(assistantId)
+    editingAssistant.value = detail
+    editForm.username = detail.username
+    editForm.full_name = detail.full_name
+    editForm.is_active = detail.is_active
+    editForm.start_date = detail.start_date
+    editForm.end_date = detail.end_date || ''
+    editForm.weekly_hours = detail.weekly_hours
+    editForm.schedule_blocks = detail.schedule_blocks.map((block) => ({ ...block }))
+  } catch (error) {
+    editError.value = error instanceof Error ? error.message : 'No se pudo cargar la información del asistente.'
+  } finally {
+    editLoading.value = false
+  }
+}
+
+const closeAssistantEditor = () => {
+  showEditModal.value = false
+  editingAssistant.value = null
+}
+
+const openAssistantReports = async (assistantId: number) => {
+  showReportsModal.value = true
+  reportsLoading.value = true
+  reportsError.value = ''
+  reportsAssistant.value = assistants.value.find((assistant) => assistant.id === assistantId) || null
+  try {
+    assistantReports.value = await api.getAssistantReports(assistantId)
+  } catch (error) {
+    reportsError.value = error instanceof Error ? error.message : 'No se pudieron cargar los reportes.'
+  } finally {
+    reportsLoading.value = false
+  }
+}
+
+const closeAssistantReports = () => {
+  showReportsModal.value = false
+  reportsAssistant.value = null
+  assistantReports.value = []
+}
+
+const addScheduleBlock = () => {
+  editForm.schedule_blocks.push({ day_of_week: 'MONDAY', start_time: '08:00', end_time: '17:00' })
+}
+
+const removeScheduleBlock = (index: number) => {
+  editForm.schedule_blocks.splice(index, 1)
+}
+
+const saveAssistantEditor = async () => {
+  if (!editingAssistant.value) return
+  editSaving.value = true
+  editError.value = ''
+  try {
+    await api.updateAssistantAdminDetail(editingAssistant.value.id, {
+      username: editForm.username,
+      full_name: editForm.full_name,
+      is_active: editForm.is_active,
+      start_date: editForm.start_date,
+      end_date: editForm.end_date || null,
+      weekly_hours: Number(editForm.weekly_hours),
+      schedule_blocks: editForm.schedule_blocks,
+    })
+    await loadAssistants()
+    closeAssistantEditor()
+  } catch (error) {
+    editError.value = error instanceof Error ? error.message : 'No se pudo guardar el asistente.'
+  } finally {
+    editSaving.value = false
+  }
+}
+
+const saveReport = async (report: AssistantReport) => {
+  if (!editingAssistant.value) return
+  try {
+    const updated = await api.updateAssistantReport(editingAssistant.value.id, {
+      id: report.id,
+      check_out: report.check_out,
+      work_description: report.work_description,
+      break_minutes: report.break_minutes,
+    })
+    const index = assistantReports.value.findIndex((item) => item.id === updated.id)
+    if (index >= 0) assistantReports.value[index] = updated
+  } catch (error) {
+    reportsError.value = error instanceof Error ? error.message : 'No se pudo actualizar el reporte.'
+  }
+}
+
+const deleteReport = async (report: AssistantReport) => {
+  if (!editingAssistant.value || !window.confirm('¿Eliminar este reporte de horas?')) return
+  try {
+    await api.deleteAssistantReport(editingAssistant.value.id, report.id)
+    assistantReports.value = assistantReports.value.filter((item) => item.id !== report.id)
+  } catch (error) {
+    reportsError.value = error instanceof Error ? error.message : 'No se pudo eliminar el reporte.'
+  }
 }
 
 const onConfirmAssistantForm = async (formData: Record<string, any>) => {
@@ -283,6 +409,73 @@ onMounted(() => {
         </div>
       </div>
 
+      <div v-if="showEditModal" class="schedule-modal-overlay">
+        <div class="edit-modal-card">
+          <div class="modal-heading">
+            <h2>Editar asistente</h2>
+          </div>
+          <p v-if="editLoading">Cargando información...</p>
+          <p v-if="editError" class="schedule-error">{{ editError }}</p>
+          <form v-if="!editLoading" @submit.prevent="saveAssistantEditor">
+            <div class="edit-grid">
+              <label>Usuario <input v-model.trim="editForm.username" required /></label>
+              <label>Nombre completo <input v-model.trim="editForm.full_name" required /></label>
+              <label>Estado
+                <select v-model="editForm.is_active">
+                  <option :value="true">Activo</option>
+                  <option :value="false">Inactivo</option>
+                </select>
+              </label>
+              <label>Horas semanales <input v-model.number="editForm.weekly_hours" type="number" min="1" required /></label>
+              <label>Fecha de inicio <input v-model="editForm.start_date" type="date" required /></label>
+              <label>Fecha de finalización <input v-model="editForm.end_date" type="date" /></label>
+            </div>
+
+            <h3>Horario</h3>
+            <div v-for="(block, index) in editForm.schedule_blocks" :key="index" class="schedule-edit-row">
+              <select v-model="block.day_of_week">
+                <option value="MONDAY">Lunes</option><option value="TUESDAY">Martes</option>
+                <option value="WEDNESDAY">Miércoles</option><option value="THURSDAY">Jueves</option>
+                <option value="FRIDAY">Viernes</option><option value="SATURDAY">Sábado</option><option value="SUNDAY">Domingo</option>
+              </select>
+              <input v-model="block.start_time" type="time" required />
+              <input v-model="block.end_time" type="time" required />
+              <button type="button" class="delete-button" @click="removeScheduleBlock(index)">Quitar</button>
+            </div>
+            <button type="button" class="secondary-button" @click="addScheduleBlock">Agregar bloque</button>
+
+            <div class="schedule-modal-actions">
+              <AppButton variant="secondary" size="md" @click="closeAssistantEditor">Cancelar</AppButton>
+              <AppButton variant="primary" size="md" type="submit" :disabled="editSaving">
+                {{ editSaving ? 'Guardando...' : 'Guardar' }}
+              </AppButton>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div v-if="showReportsModal" class="schedule-modal-overlay">
+        <div class="edit-modal-card reports-modal-card">
+          <div class="modal-heading">
+            <h2>Reportes de {{ reportsAssistant?.name || 'asistente' }}</h2>
+          </div>
+          <p v-if="reportsLoading">Cargando reportes...</p>
+          <p v-if="reportsError" class="schedule-error">{{ reportsError }}</p>
+          <p v-if="!reportsLoading && !reportsError && !assistantReports.length">
+            Este asistente no tiene reportes.
+          </p>
+          <div v-for="report in assistantReports" :key="report.id" class="report-edit-row">
+            <span>{{ new Date(report.check_in).toLocaleString('es-MX') }}</span>
+            <input v-model="report.check_out" type="datetime-local" />
+            <input v-model.number="report.break_minutes" type="number" min="0" placeholder="Almuerzo (min)" />
+            <input v-model="report.work_description" placeholder="Descripción" />
+          </div>
+          <div class="schedule-modal-actions">
+            <AppButton variant="secondary" size="md" @click="closeAssistantReports">Cerrar</AppButton>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 
@@ -373,5 +566,33 @@ onMounted(() => {
   display: flex;
   justify-content: flex-end;
   gap: 0.75rem;
+}
+
+.edit-modal-card {
+  width: min(1100px, 100%);
+  max-height: 90vh;
+  overflow: auto;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 1.5rem;
+}
+.modal-heading { display: flex; justify-content: space-between; align-items: center; }
+.modal-heading h2 { margin: 0; color: var(--color-primary); }
+.close-button { border: 0; background: transparent; font-size: 1.8rem; cursor: pointer; }
+.edit-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+.edit-grid label { display: flex; flex-direction: column; gap: .4rem; font-weight: 600; }
+.edit-grid input, .edit-grid select, .schedule-edit-row input, .schedule-edit-row select, .report-edit-row input {
+  min-width: 0; padding: .55rem; border: 1px solid var(--color-border); border-radius: 6px; font: inherit;
+}
+.edit-modal-card h3 { margin: 1.5rem 0 .75rem; color: var(--color-primary); }
+.schedule-edit-row, .report-edit-row { display: grid; grid-template-columns: 1.2fr 1fr 1fr auto; gap: .5rem; margin-bottom: .6rem; }
+.report-edit-row { grid-template-columns: 1.2fr 1fr .8fr 1.5fr auto auto; align-items: center; }
+.secondary-button, .save-button, .delete-button { border: 0; border-radius: 6px; padding: .55rem .75rem; color: white; cursor: pointer; font: inherit; font-weight: 600; }
+.secondary-button { background: #64748b; }
+.save-button { background: #0052a3; }
+.delete-button { background: #dc2626; }
+@media (max-width: 800px) {
+  .edit-grid, .schedule-edit-row, .report-edit-row { grid-template-columns: 1fr; }
 }
 </style>
