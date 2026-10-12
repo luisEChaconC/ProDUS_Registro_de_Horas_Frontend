@@ -56,34 +56,39 @@
         </table>
       </section>
       <section v-if="successMessage" class="message success" role="status">{{ successMessage }}</section>
-      <section v-if="editingUser" class="card edit-card">
-        <h3>Editar usuario</h3>
-        <form @submit.prevent="saveEdit">
-          <div class="edit-grid">
-            <label>Usuario
-              <input v-model.trim="editForm.username" required />
-            </label>
-            <label>Nombre completo
-              <input v-model.trim="editForm.full_name" required />
-            </label>
-            <label>Rol
-              <select v-model="editForm.role" required>
-                <option value="asistente">Asistente</option>
-                <option value="coordinador">Coordinador</option>
-                <option value="admin">Administrador</option>
-              </select>
-            </label>
-            <label class="checkbox-label">
-              <input v-model="editForm.is_active" type="checkbox" />
-              Usuario activo
-            </label>
+      <div v-if="editingUser" class="modal-overlay">
+        <section class="edit-card edit-modal" role="dialog" aria-modal="true" aria-labelledby="edit-user-title">
+          <div class="modal-heading">
+            <h3 id="edit-user-title">Editar usuario</h3>
+            <button class="close-button" type="button" aria-label="Cerrar" @click="closeEdit">×</button>
           </div>
-          <div class="edit-actions">
-            <button class="cancel-button" type="button" @click="closeEdit">Cancelar</button>
-            <button class="save-button" type="submit" :disabled="saving">{{ saving ? 'Guardando...' : 'Guardar cambios' }}</button>
-          </div>
-        </form>
-      </section>
+          <form @submit.prevent="saveEdit">
+            <div class="edit-grid">
+              <label>Usuario
+                <input v-model.trim="editForm.username" required />
+              </label>
+              <label>Nombre completo
+                <input v-model.trim="editForm.full_name" required />
+              </label>
+              <label>Rol
+                <select v-model="editForm.role" required>
+                  <option value="asistente">Asistente</option>
+                  <option value="coordinador">Coordinador</option>
+                  <option value="admin">Administrador</option>
+                </select>
+              </label>
+              <label class="checkbox-label">
+                <input v-model="editForm.is_active" type="checkbox" />
+                Usuario activo
+              </label>
+            </div>
+            <div class="edit-actions">
+              <button class="cancel-button" type="button" @click="closeEdit">Cancelar</button>
+              <button class="save-button" type="submit" :disabled="saving">{{ saving ? 'Guardando...' : 'Guardar cambios' }}</button>
+            </div>
+          </form>
+        </section>
+      </div>
     </main>
   </div>
 </template>
@@ -216,8 +221,12 @@ td { color: #374151; }
 .message { padding: 1rem; border-radius: 7px; }
 .error { background: #fef2f2; color: #b91c1c; }
 .success { margin-top: 1rem; background: #ecfdf5; color: #047857; }
-.edit-card { margin-top: 1rem; padding: 1.5rem; }
-.edit-card h3 { margin-top: 0; color: #003d7a; }
+.modal-overlay { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 1rem; background: #00000059; }
+.edit-card { padding: 1.5rem; background: #fff; border-radius: 12px; box-shadow: 0 8px 30px #00000026; }
+.edit-modal { width: min(650px, 100%); max-height: 90vh; overflow-y: auto; }
+.modal-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1.25rem; }
+.edit-card h3 { margin: 0; color: #003d7a; }
+.close-button { border: 0; background: transparent; color: #374151; cursor: pointer; font-size: 1.75rem; line-height: 1; }
 .edit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
 .edit-grid label { display: flex; flex-direction: column; gap: .4rem; color: #374151; font-weight: 600; }
 .edit-grid input:not([type='checkbox']), .edit-grid select { padding: .65rem; border: 1px solid #cbd5e1; border-radius: 6px; font: inherit; }
