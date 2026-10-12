@@ -6,6 +6,7 @@ import BlockedView from "../views/BlockedView.vue";
 import ManageAssistantsView from "../views/ManageAssistantsView.vue";
 import HorariosView from "../views/HorariosView.vue";
 import ReportesView from "../views/ReportesView.vue";
+import ManageUsersView from "../views/ManageUsersView.vue";
 
 // Extender tipo de RouteMeta para agregar requiredRoles
 declare module "vue-router" {
@@ -112,6 +113,12 @@ const router = createRouter({
       name: "reportes",
       component: ReportesView,
       meta: { requiresAuth: true },
+    },
+    {
+      path: "/usuarios",
+      name: "manage-users",
+      component: ManageUsersView,
+      meta: { requiresAuth: true, requiredRoles: ['admin'] },
     },
   ],
 });

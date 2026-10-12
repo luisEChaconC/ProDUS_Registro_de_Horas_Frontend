@@ -12,6 +12,9 @@ import api from '@/services/api'
 const router = useRouter()
 const { userRole, userName, logout } = useAuth()
 const assistantsCount = ref(0)
+const activeUsersCount = ref(0)
+const activeAssistantsCount = ref(0)
+const activeProjectsCount = ref(0)
 const registeredHours = ref('0')
 const registeredHoursPeriod = ref<'day' | 'week' | 'month'>('day')
 const activeSession = ref(false)
@@ -34,6 +37,20 @@ const loadAssistants = async () => {
   } catch (error) {
     assistantsCount.value = 0
     console.warn('No se pudo cargar la lista de asistentes:', error)
+  }
+}
+
+const loadAdminSummary = async () => {
+  try {
+    const response = await api.getAdminSummary()
+    activeUsersCount.value = response.active_users
+    activeAssistantsCount.value = response.active_assistants
+    activeProjectsCount.value = response.active_projects
+  } catch (error) {
+    activeUsersCount.value = 0
+    activeAssistantsCount.value = 0
+    activeProjectsCount.value = 0
+    console.warn('No se pudo cargar el resumen administrativo:', error)
   }
 }
 
@@ -104,6 +121,13 @@ watch(
       loadAssistants()
     } else {
       assistantsCount.value = 0
+    }
+    if (role === 'admin') {
+      void loadAdminSummary()
+    } else {
+      activeUsersCount.value = 0
+      activeAssistantsCount.value = 0
+      activeProjectsCount.value = 0
     }
 
     if (role === 'asistente') {
@@ -183,7 +207,7 @@ const handleLogout = async () => {
     <div class="main-content">
       <!-- Banner de bienvenida -->
       <WelcomeBanner 
-        :title="`Bienvenido, ${userName || 'Usuario'}`"
+        :title="`Bienvenid@, ${userName || 'Usuario'}`"
         :subtitle="`Acceso rápido a tus herramientas de ${getRoleLabel().toLowerCase()}`"
       />
 
@@ -253,8 +277,9 @@ const handleLogout = async () => {
       <section class="info-section" v-if="userRole === 'admin'">
         <h3 class="section-title">Información del Sistema</h3>
         <div class="info-cards">
-          <InfoCard label="Usuarios Activos" value="0" />
-          <InfoCard label="Proyectos" value="0" />
+          <InfoCard label="Usuarios Activos" :value="String(activeUsersCount)" />
+          <InfoCard label="Asistentes Activos" :value="String(activeAssistantsCount)" />
+          <InfoCard label="Proyectos Activos" :value="String(activeProjectsCount)" />
         </div>
       </section>
     </div>
