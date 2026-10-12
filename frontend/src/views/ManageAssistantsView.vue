@@ -366,27 +366,30 @@ onMounted(() => {
         @action="onAssistantAction"
       />
 
-      <GenericForm
-        v-if="showAssistantForm"
-        title="Nuevo Asistente"
-        :fields="assistantFormFields"
-        confirm-text="Confirmar"
-        cancel-text="Cancelar"
-        @confirm="onConfirmAssistantForm"
-        @cancel="onCancelAssistantForm"
-      >
-        <template #extra>
-          <div class="schedule-action-row">
-            <AppButton variant="secondary" size="md" @click="onOpenScheduleModal">
-              Configurar horario inicial
-            </AppButton>
-            <p class="schedule-status" :class="{ confirmed: isScheduleConfirmed }">
-              {{ isScheduleConfirmed ? 'Horario confirmado' : 'Horario pendiente por confirmar' }}
-            </p>
-            <p v-if="scheduleValidationError" class="schedule-error">{{ scheduleValidationError }}</p>
-          </div>
-        </template>
-      </GenericForm>
+      <div v-if="showAssistantForm" class="schedule-modal-overlay">
+        <div class="new-assistant-modal-card">
+          <GenericForm
+            title="Nuevo Asistente"
+            :fields="assistantFormFields"
+            confirm-text="Confirmar"
+            cancel-text="Cancelar"
+            @confirm="onConfirmAssistantForm"
+            @cancel="onCancelAssistantForm"
+          >
+            <template #extra>
+              <div class="schedule-action-row">
+                <AppButton variant="secondary" size="md" @click="onOpenScheduleModal">
+                  Configurar horario inicial
+                </AppButton>
+                <p class="schedule-status" :class="{ confirmed: isScheduleConfirmed }">
+                  {{ isScheduleConfirmed ? 'Horario confirmado' : 'Horario pendiente por confirmar' }}
+                </p>
+                <p v-if="scheduleValidationError" class="schedule-error">{{ scheduleValidationError }}</p>
+              </div>
+            </template>
+          </GenericForm>
+        </div>
+      </div>
 
       <div v-if="showScheduleModal" class="schedule-modal-overlay">
         <div class="schedule-modal-card">
@@ -469,6 +472,8 @@ onMounted(() => {
             <input v-model="report.check_out" type="datetime-local" />
             <input v-model.number="report.break_minutes" type="number" min="0" placeholder="Almuerzo (min)" />
             <input v-model="report.work_description" placeholder="Descripción" />
+            <button type="button" class="save-button" @click="saveReport(report)">Guardar</button>
+            <button type="button" class="delete-button" @click="deleteReport(report)">Borrar</button>
           </div>
           <div class="schedule-modal-actions">
             <AppButton variant="secondary" size="md" @click="closeAssistantReports">Cerrar</AppButton>
@@ -561,7 +566,15 @@ onMounted(() => {
   flex-direction: column;
   gap: 1rem;
 }
-
+.new-assistant-modal-card {
+  width: min(720px, 100%);
+  max-height: 90vh;
+  overflow: auto;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 1rem;
+}
 .schedule-modal-actions {
   display: flex;
   justify-content: flex-end;
