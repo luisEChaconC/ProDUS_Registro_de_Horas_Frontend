@@ -148,24 +148,18 @@ onBeforeUnmount(() => {
 
 // Opciones de menú según el rol
 const menuOptions = computed(() => {
-  const commonOptions = [
-    { label: 'Registro de Horas', path: '/registro-horas' }
-  ]
-
   const roleMenus = {
     asistente: [
-      ...commonOptions,
+      { label: 'Registro de Horas', path: '/registro-horas' },
       { label: 'Mis Horarios', path: '/horarios' },
       { label: 'Mis Reportes', path: '/reportes' }
     ],
     coordinador: [
-      ...commonOptions,
       { label: 'Gestionar Equipo', path: '/equipo' },
       { label: 'Reportes del Proyecto', path: '/reportes-proyecto' },
       { label: 'Horarios Equipo', path: '/horarios-equipo' }
     ],
     admin: [
-      ...commonOptions,
       { label: 'Gestionar Usuarios', path: '/usuarios' },
       { label: 'Configuración Sistema', path: '/configuracion' },
       { label: 'Reportes Globales', path: '/reportes-globales' },
@@ -174,7 +168,7 @@ const menuOptions = computed(() => {
   }
 
   const role = userRole.value as keyof typeof roleMenus
-  return roleMenus[role] || commonOptions
+  return roleMenus[role]
 })
 
 const getRoleLabel = (): string => {
