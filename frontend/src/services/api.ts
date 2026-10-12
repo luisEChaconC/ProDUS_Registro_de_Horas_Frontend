@@ -116,6 +116,7 @@ export interface UserListItem {
   is_active: boolean;
   needs_password_change: boolean;
   created_at: string;
+  project_ids?: number[];
 }
 
 export interface TimeLogSession {
@@ -515,6 +516,38 @@ class ApiService {
 
   async listUsers(): Promise<UserListItem[]> {
     return this.request<UserListItem[]>("/users/users/");
+  }
+
+  async listCoordinators(): Promise<UserListItem[]> {
+    const response = await this.request<{ ok: boolean; results: UserListItem[] }>("/users/admin/coordinators/");
+    return response.results;
+  }
+
+  async createCoordinator(payload: {
+    username: string;
+    full_name: string;
+    password: string;
+    password_confirm: string;
+    project_ids?: number[];
+  }): Promise<UserListItem> {
+    const response = await this.request<{ ok: boolean; user: UserListItem }>("/users/admin/coordinators/", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+    return response.user;
+  }
+
+  async updateCoordinator(id: number, payload: {
+    username: string;
+    full_name: string;
+    is_active: boolean;
+    project_ids: number[];
+  }): Promise<UserListItem> {
+    const response = await this.patch<{ ok: boolean; user: UserListItem }>(
+      `/users/admin/coordinators/${id}/`,
+      payload,
+    );
+    return response.user;
   }
 
   async updateUser(id: number, payload: {
