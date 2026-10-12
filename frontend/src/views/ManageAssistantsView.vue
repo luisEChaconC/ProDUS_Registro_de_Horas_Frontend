@@ -30,8 +30,8 @@ const assistantColumns = [
 ]
 
 const assistantActions = [
-  { key: 'edit', label: 'Editar' },
-  { key: 'delete', label: 'Eliminar', disabledField: 'canDelete' }
+  { key: 'edit', label: 'Editar' }
+  // { key: 'delete', label: 'Eliminar', disabledField: 'canDelete' }
 ]
 
 interface AssistantRow {
@@ -40,7 +40,7 @@ interface AssistantRow {
   name: string
   role: string
   status: string
-  canDelete: boolean
+  // canDelete: boolean
 }
 
 const assistants = ref<AssistantRow[]>([])
@@ -66,7 +66,7 @@ const loadAssistants = async () => {
       name: item.full_name,
       role: 'Asistente',
       status: item.is_active ? 'Activo' : 'Inactivo',
-      canDelete: false,
+      // canDelete: false,
     }))
   } catch (error) {
   }
