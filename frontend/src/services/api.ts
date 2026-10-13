@@ -188,6 +188,10 @@ export interface ProjectOption {
   name: string;
 }
 
+export interface ProjectAdminItem extends ProjectOption {
+  is_active: boolean;
+}
+
 export interface CoordinatorOption {
   id: number;
   full_name: string;
@@ -618,6 +622,27 @@ class ApiService {
 
   async getActiveProjects(): Promise<OptionsResponse<ProjectOption>> {
     return this.request<OptionsResponse<ProjectOption>>("/projects/active/");
+  }
+
+  async listAdminProjects(includeInactive = false): Promise<OptionsResponse<ProjectAdminItem>> {
+    const query = includeInactive ? '?include_inactive=true' : '';
+    return this.request<OptionsResponse<ProjectAdminItem>>(`/projects/admin/${query}`);
+  }
+
+  async createProject(payload: { name: string; is_active: boolean }): Promise<ProjectAdminItem> {
+    const response = await this.request<{ ok: boolean; project: ProjectAdminItem }>('/projects/admin/', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    return response.project;
+  }
+
+  async updateProject(id: number, payload: { name: string; is_active: boolean }): Promise<ProjectAdminItem> {
+    const response = await this.patch<{ ok: boolean; project: ProjectAdminItem }>(
+      `/projects/admin/${id}/`,
+      payload,
+    );
+    return response.project;
   }
 
   async getActiveCoordinators(): Promise<OptionsResponse<CoordinatorOption>> {
