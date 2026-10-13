@@ -94,6 +94,49 @@ const formatDuration = (seconds: number) => {
   return `${Math.floor(totalMinutes / 60)} h ${totalMinutes % 60} min`
 }
 
+const csvValue = (value: string | number | null) => {
+  const text = value === null ? '' : String(value)
+  return `"${text.replace(/"/g, '""').replace(/\r?\n/g, ' ')}"`
+}
+
+const exportReports = () => {
+  if (!assistantReports.value.length) return
+  const headers = [
+    ...(reportsScope.value === 'all' ? ['Asistente'] : []),
+    'Inicio',
+    'Finalización',
+    'Horas contabilizadas',
+    'Estado',
+    'Proyecto',
+    'Encargado',
+    'Minutos de almuerzo',
+    'Actividades realizadas',
+    'Descripción del trabajo',
+    'Notas',
+  ]
+  const rows = assistantReports.value.map((report) => [
+    ...(reportsScope.value === 'all' ? [report.assistant_name || 'Sin nombre'] : []),
+    formatReportDate(report.check_in),
+    formatReportDate(report.check_out),
+    formatDuration(getWorkedSeconds(report)),
+    report.status_code,
+    report.project_name || 'Sin proyecto',
+    report.manager_name || 'Sin encargado',
+    report.break_minutes,
+    report.activities || '',
+    report.work_description || '',
+    report.notes || '',
+  ])
+  const csv = [headers, ...rows].map((row) => row.map(csvValue).join(';')).join('\r\n')
+  const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `${reportsScope.value === 'all' ? 'reportes-todos-los-asistentes' : 'reportes-asistente'}-${reportStartDate.value || 'todos'}-${reportEndDate.value || 'todos'}.csv`
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
 const formatReportDate = (value: string | null) => {
   if (!value) return 'Pendiente'
   return new Intl.DateTimeFormat('es-MX', {
@@ -661,6 +704,9 @@ onMounted(() => {
             <label>Hasta <input v-model="reportEndDate" type="date" /></label>
             <button type="button" class="save-button" :disabled="reportsLoading" @click="consultAssistantReports">
               {{ reportsLoading ? 'Consultando...' : 'Consultar' }}
+            </button>
+            <button type="button" class="secondary-button" :disabled="reportsLoading || !assistantReports.length" @click="exportReports">
+              Exportar CSV
             </button>
           </div>
           <section v-if="reportsScope === 'assistant'" class="report-total">
