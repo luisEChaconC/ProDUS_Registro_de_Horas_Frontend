@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AppHeader from '@/components/AppHeader.vue'
 import AppButton from '@/components/AppButton.vue'
@@ -9,7 +9,7 @@ import ScheduleBuilder from '@/components/ScheduleBuilder.vue'
 import ErrorModal from '@/components/ErrorModal.vue'
 import { assistantFormFields } from '@/forms/assistantForm.schema'
 import { useAuth } from '@/composables/useAuth'
-import api, { type AssistantAdminDetail, type AssistantReport, type ScheduleBlockInput } from '@/services/api'
+import api, { type AssistantAdminDetail, type AssistantReport, type CoordinatorOption, type ProjectOption, type ScheduleBlockInput } from '@/services/api'
 
 const router = useRouter()
 const { userRole, userName, userId, logout } = useAuth()
@@ -51,6 +51,16 @@ const showReportsModal = ref(false)
 const reportsAssistant = ref<AssistantRow | null>(null)
 const reportsLoading = ref(false)
 const reportsError = ref('')
+const reportSuccess = ref('')
+const reportToastType = ref<'success' | 'error'>('success')
+const reportToastTimer = ref<ReturnType<typeof setTimeout> | null>(null)
+const reportSaving = ref(false)
+const reportProjects = ref<ProjectOption[]>([])
+const reportManagers = ref<CoordinatorOption[]>([])
+const selectedReport = ref<AssistantReport | null>(null)
+const reportStartDate = ref('')
+const reportEndDate = ref('')
+const reportTotalSeconds = ref(0)
 const editLoading = ref(false)
 const editSaving = ref(false)
 const editError = ref('')
@@ -74,6 +84,33 @@ const getScheduleBlocks = (storageKey: string): unknown[] => {
   } catch {
     return []
   }
+
+}
+
+const showReportToast = (message: string, type: 'success' | 'error') => {
+  if (reportToastTimer.value) clearTimeout(reportToastTimer.value)
+  reportToastType.value = type
+  reportSuccess.value = message
+  reportToastTimer.value = setTimeout(() => {
+    reportSuccess.value = ''
+    reportToastTimer.value = null
+  }, 5000)
+}
+
+const getWorkedSeconds = (report: AssistantReport) =>
+  Math.max(0, report.elapsed_seconds - report.break_minutes * 60)
+
+const formatDuration = (seconds: number) => {
+  const totalMinutes = Math.floor(Math.max(0, seconds) / 60)
+  return `${Math.floor(totalMinutes / 60)} h ${totalMinutes % 60} min`
+}
+
+const formatReportDate = (value: string | null) => {
+  if (!value) return 'Pendiente'
+  return new Intl.DateTimeFormat('es-MX', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date(value))
 }
 
 const loadAssistants = async () => {
@@ -204,22 +241,88 @@ const closeAssistantEditor = () => {
 
 const openAssistantReports = async (assistantId: number) => {
   showReportsModal.value = true
-  reportsLoading.value = true
   reportsError.value = ''
+  reportSuccess.value = ''
   reportsAssistant.value = assistants.value.find((assistant) => assistant.id === assistantId) || null
+  setCurrentReportWeek()
+  await loadAssistantReports(assistantId)
+}
+
+const loadAssistantReports = async (assistantId = reportsAssistant.value?.id) => {
+  if (!assistantId) return
+  reportsLoading.value = true
   try {
-    assistantReports.value = await api.getAssistantReports(assistantId)
+    const [reports, projects, managers] = await Promise.all([
+      api.getAssistantReports(assistantId, {
+        start_date: reportStartDate.value || undefined,
+        end_date: reportEndDate.value || undefined,
+      }),
+      api.getActiveProjects(),
+      api.getActiveCoordinators(),
+    ])
+    assistantReports.value = reports.results.map((report) => ({
+      ...report,
+      check_in: formatDateTimeInput(report.check_in),
+      check_out: report.check_out ? formatDateTimeInput(report.check_out) : null,
+    }))
+    reportTotalSeconds.value = reports.total_seconds
+    selectedReport.value = null
+    reportSuccess.value = ''
+    reportProjects.value = projects.results
+    reportManagers.value = managers.results
   } catch (error) {
-    reportsError.value = error instanceof Error ? error.message : 'No se pudieron cargar los reportes.'
+    const message = error instanceof Error ? error.message : 'No se pudieron cargar los reportes.'
+    reportsError.value = message
+    showReportToast(message, 'error')
   } finally {
     reportsLoading.value = false
   }
+}
+
+const formatInputDate = (date: Date) => {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+const setCurrentReportWeek = () => {
+  const today = new Date()
+  const daysSinceMonday = today.getDay() === 0 ? 6 : today.getDay() - 1
+  const weekStart = new Date(today)
+  weekStart.setDate(today.getDate() - daysSinceMonday)
+  const weekEnd = new Date(weekStart)
+  weekEnd.setDate(weekStart.getDate() + 6)
+  reportStartDate.value = formatInputDate(weekStart)
+  reportEndDate.value = formatInputDate(weekEnd)
+}
+
+const consultAssistantReports = () => {
+  void loadAssistantReports()
 }
 
 const closeAssistantReports = () => {
   showReportsModal.value = false
   reportsAssistant.value = null
   assistantReports.value = []
+  reportProjects.value = []
+  reportManagers.value = []
+  selectedReport.value = null
+  reportStartDate.value = ''
+  reportEndDate.value = ''
+  reportTotalSeconds.value = 0
+  reportSuccess.value = ''
+}
+
+const openReportDetails = (report: AssistantReport) => {
+  selectedReport.value = report
+  reportsError.value = ''
+  reportSuccess.value = ''
+}
+
+const closeReportDetails = () => {
+  selectedReport.value = null
+  reportSuccess.value = ''
 }
 
 const addScheduleBlock = () => {
@@ -254,30 +357,70 @@ const saveAssistantEditor = async () => {
 }
 
 const saveReport = async (report: AssistantReport) => {
-  if (!editingAssistant.value) return
+  if (!reportsAssistant.value) return
+  reportSaving.value = true
+  reportsError.value = ''
+  reportSuccess.value = ''
   try {
-    const updated = await api.updateAssistantReport(editingAssistant.value.id, {
+    const updated = await api.updateAssistantReport(reportsAssistant.value.id, {
       id: report.id,
-      check_out: report.check_out,
+      check_in: toApiDateTime(report.check_in),
+      check_out: report.check_out ? toApiDateTime(report.check_out) : null,
+      project_id: report.project_id ?? null,
+      manager_user_id: report.manager_user_id ?? null,
       work_description: report.work_description,
+      activities: report.activities,
+      notes: report.notes,
       break_minutes: report.break_minutes,
     })
     const index = assistantReports.value.findIndex((item) => item.id === updated.id)
-    if (index >= 0) assistantReports.value[index] = updated
+    if (index >= 0) {
+      const savedReport = {
+        ...updated,
+        check_in: formatDateTimeInput(updated.check_in),
+        check_out: updated.check_out ? formatDateTimeInput(updated.check_out) : null,
+      }
+      assistantReports.value[index] = savedReport
+      selectedReport.value = savedReport
+      showReportToast('Reporte guardado correctamente.', 'success')
+    }
   } catch (error) {
-    reportsError.value = error instanceof Error ? error.message : 'No se pudo actualizar el reporte.'
+    const message = error instanceof Error ? error.message : 'No se pudo actualizar el reporte.'
+    reportsError.value = message
+    showReportToast(message, 'error')
+  } finally {
+    reportSaving.value = false
   }
 }
 
+const formatDateTimeInput = (value: string | null) => {
+  if (!value) return ''
+  const date = new Date(value)
+  const pad = (part: number) => String(part).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
+const toApiDateTime = (value: string) => {
+  const date = new Date(value)
+  return date.toISOString()
+}
+
 const deleteReport = async (report: AssistantReport) => {
-  if (!editingAssistant.value || !window.confirm('¿Eliminar este reporte de horas?')) return
+  if (!reportsAssistant.value || !window.confirm('¿Eliminar este reporte de horas?')) return
   try {
-    await api.deleteAssistantReport(editingAssistant.value.id, report.id)
+    await api.deleteAssistantReport(reportsAssistant.value.id, report.id)
     assistantReports.value = assistantReports.value.filter((item) => item.id !== report.id)
+    if (selectedReport.value?.id === report.id) closeReportDetails()
   } catch (error) {
-    reportsError.value = error instanceof Error ? error.message : 'No se pudo eliminar el reporte.'
+    const message = error instanceof Error ? error.message : 'No se pudo eliminar el reporte.'
+    reportsError.value = message
+    showReportToast(message, 'error')
   }
 }
+
+onUnmounted(() => {
+  if (reportToastTimer.value) clearTimeout(reportToastTimer.value)
+})
 
 const onConfirmAssistantForm = async (formData: Record<string, any>) => {
   if (!isScheduleConfirmed.value) {
@@ -479,18 +622,80 @@ onMounted(() => {
           <div class="modal-heading">
             <h2>Reportes de {{ reportsAssistant?.name || 'asistente' }}</h2>
           </div>
+          <div class="report-filters">
+            <label>Desde <input v-model="reportStartDate" type="date" /></label>
+            <label>Hasta <input v-model="reportEndDate" type="date" /></label>
+            <button type="button" class="save-button" :disabled="reportsLoading" @click="consultAssistantReports">
+              {{ reportsLoading ? 'Consultando...' : 'Consultar' }}
+            </button>
+          </div>
+          <section class="report-total">
+            Total de horas registradas en el periodo seleccionado:
+            <strong>{{ formatDuration(reportTotalSeconds) }}</strong>
+          </section>
           <p v-if="reportsLoading">Cargando reportes...</p>
-          <p v-if="reportsError" class="schedule-error">{{ reportsError }}</p>
           <p v-if="!reportsLoading && !reportsError && !assistantReports.length">
             Este asistente no tiene reportes.
           </p>
-          <div v-for="report in assistantReports" :key="report.id" class="report-edit-row">
-            <span>{{ new Date(report.check_in).toLocaleString('es-MX') }}</span>
-            <input v-model="report.check_out" type="datetime-local" />
-            <input v-model.number="report.break_minutes" type="number" min="0" placeholder="Almuerzo (min)" />
-            <input v-model="report.work_description" placeholder="Descripción" />
-            <button type="button" class="save-button" @click="saveReport(report)">Guardar</button>
-            <button type="button" class="delete-button" @click="deleteReport(report)">Borrar</button>
+          <div v-if="!selectedReport" class="report-preview-list">
+            <div v-for="report in assistantReports" :key="report.id" class="report-preview-row">
+              <div><strong>Inicio</strong><span>{{ formatReportDate(report.check_in) }}</span></div>
+              <div><strong>Finalización</strong><span>{{ formatReportDate(report.check_out) }}</span></div>
+              <div><strong>Horas contabilizadas</strong><span>{{ formatDuration(getWorkedSeconds(report)) }}</span></div>
+              <button type="button" class="save-button" @click="openReportDetails(report)">Ver detalles</button>
+            </div>
+          </div>
+          <div v-else class="report-editor">
+            <div class="report-summary">
+              <div>
+                <strong>Horas contabilizadas</strong>
+                <span>{{ formatDuration(getWorkedSeconds(selectedReport)) }}</span>
+              </div>
+              <button type="button" class="delete-button" @click="deleteReport(selectedReport)">Borrar reporte</button>
+            </div>
+            <div class="report-details-grid">
+              <label>Fecha y hora de inicio
+                <input v-model="selectedReport.check_in" type="datetime-local" required />
+              </label>
+              <label>Fecha y hora de finalización
+                <input v-model="selectedReport.check_out" type="datetime-local" />
+              </label>
+              <label>Estado
+                <input :value="selectedReport.status_code" readonly />
+              </label>
+              <label>Proyecto
+                <select v-model="selectedReport.project_id">
+                  <option :value="null">Sin proyecto</option>
+                  <option v-for="project in reportProjects" :key="project.id" :value="project.id">{{ project.name }}</option>
+                </select>
+              </label>
+              <label>Encargado
+                <select v-model="selectedReport.manager_user_id">
+                  <option :value="null">Sin encargado</option>
+                  <option v-for="manager in reportManagers" :key="manager.id" :value="manager.id">
+                    {{ manager.full_name || manager.username }}
+                  </option>
+                </select>
+              </label>
+              <label>Minutos de almuerzo
+                <input v-model.number="selectedReport.break_minutes" type="number" min="0" required />
+              </label>
+              <label class="full-width">Actividades realizadas
+                <textarea v-model="selectedReport.activities" rows="3"></textarea>
+              </label>
+              <label class="full-width">Descripción del trabajo
+                <textarea v-model="selectedReport.work_description" rows="3"></textarea>
+              </label>
+              <label class="full-width">Notas
+                <textarea v-model="selectedReport.notes" rows="3"></textarea>
+              </label>
+            </div>
+            <div class="report-detail-actions">
+              <button type="button" class="secondary-button" @click="closeReportDetails">Volver a reportes</button>
+              <button type="button" class="save-button" :disabled="reportSaving" @click="saveReport(selectedReport)">
+              {{ reportSaving ? 'Guardando...' : 'Guardar cambios' }}
+              </button>
+            </div>
           </div>
           <div class="schedule-modal-actions">
             <AppButton variant="secondary" size="md" @click="closeAssistantReports">Cerrar</AppButton>
@@ -507,6 +712,15 @@ onMounted(() => {
     :messages="errorMessages"
     @close="showErrorModal = false"
   />
+  <div
+    v-if="reportSuccess"
+    class="report-toast"
+    :class="`report-toast-${reportToastType}`"
+    role="status"
+    aria-live="polite"
+  >
+    {{ reportSuccess }}
+  </div>
 </template>
 
 <style scoped>
@@ -617,13 +831,48 @@ onMounted(() => {
   min-width: 0; padding: .55rem; border: 1px solid var(--color-border); border-radius: 6px; font: inherit;
 }
 .edit-modal-card h3 { margin: 1.5rem 0 .75rem; color: var(--color-primary); }
-.schedule-edit-row, .report-edit-row { display: grid; grid-template-columns: 1.2fr 1fr 1fr auto; gap: .5rem; margin-bottom: .6rem; }
-.report-edit-row { grid-template-columns: 1.2fr 1fr .8fr 1.5fr auto auto; align-items: center; }
+.schedule-edit-row { display: grid; grid-template-columns: 1.2fr 1fr 1fr auto; gap: .5rem; margin-bottom: .6rem; }
+.report-editor { margin: 1rem 0; padding: 1rem; border: 1px solid var(--color-border); border-radius: 8px; }
+.report-filters { display: flex; flex-wrap: wrap; gap: 1rem; align-items: end; margin: 1rem 0; }
+.report-filters label { display: flex; flex-direction: column; gap: .35rem; color: #374151; font-weight: 600; }
+.report-filters input { padding: .55rem; border: 1px solid var(--color-border); border-radius: 6px; font: inherit; }
+.report-total { margin: 1rem 0; padding: 1rem; background: color-mix(in srgb, var(--color-primary) 8%, transparent); border-radius: 8px; }
+.report-total strong { color: var(--color-primary); }
+.report-toast {
+  position: fixed;
+  top: 1.5rem;
+  right: 1.5rem;
+  z-index: 2000;
+  max-width: min(420px, calc(100vw - 3rem));
+  padding: .9rem 1.1rem;
+  border-radius: 8px;
+  color: white;
+  box-shadow: 0 8px 24px #0000002e;
+  font-weight: 600;
+}
+.report-toast-success { background: var(--color-success-dark); }
+.report-toast-error { background: var(--color-error-dark); }
+.report-preview-row { display: grid; grid-template-columns: 1.3fr 1.3fr 1fr auto; gap: 1rem; align-items: center; padding: .9rem 0; border-bottom: 1px solid var(--color-border); }
+.report-preview-row div { display: flex; flex-direction: column; gap: .3rem; }
+.report-preview-row strong { color: #6b7280; font-size: .8rem; }
+.report-summary { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+.report-summary div { display: flex; flex-direction: column; gap: .3rem; }
+.report-summary strong { color: #6b7280; font-size: .8rem; }
+.report-details-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1rem; }
+.report-details-grid label { display: flex; flex-direction: column; gap: .4rem; font-weight: 600; }
+.report-details-grid input, .report-details-grid select, .report-details-grid textarea {
+  min-width: 0; padding: .55rem; border: 1px solid var(--color-border); border-radius: 6px; font: inherit;
+}
+.full-width { grid-column: 1 / -1; }
+.report-detail-actions { display: flex; justify-content: flex-end; gap: .75rem; }
 .secondary-button, .save-button, .delete-button { border: 0; border-radius: 6px; padding: .55rem .75rem; color: white; cursor: pointer; font: inherit; font-weight: 600; }
 .secondary-button { background: #64748b; }
 .save-button { background: #0052a3; }
 .delete-button { background: #dc2626; }
 @media (max-width: 800px) {
-  .edit-grid, .schedule-edit-row, .report-edit-row { grid-template-columns: 1fr; }
+  .edit-grid, .schedule-edit-row, .report-details-grid, .report-preview-row { grid-template-columns: 1fr; }
+  .full-width { grid-column: auto; }
+  .report-summary { align-items: flex-start; flex-direction: column; gap: .75rem; }
+  .report-detail-actions { flex-direction: column-reverse; }
 }
 </style>
