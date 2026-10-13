@@ -15,8 +15,8 @@ const assistantsCount = ref(0)
 const activeUsersCount = ref(0)
 const activeAssistantsCount = ref(0)
 const activeProjectsCount = ref(0)
-const registeredHours = ref('0')
-const registeredHoursPeriod = ref<'day' | 'week' | 'month'>('day')
+const registeredHours = ref('0 h 0 min')
+const registeredHoursPeriod = ref<'day' | 'week' | 'month'>('week')
 const activeSession = ref(false)
 const elapsedSeconds = ref(0)
 const sessionLoading = ref(true)
@@ -57,9 +57,10 @@ const loadAdminSummary = async () => {
 const loadRegisteredHours = async () => {
   try {
     const response = await api.getWorkSessionHistory(registeredHoursPeriod.value)
-    registeredHours.value = (response.total_seconds / 3600).toFixed(2)
+    const totalMinutes = Math.floor(Math.max(0, response.total_seconds) / 60)
+    registeredHours.value = `${Math.floor(totalMinutes / 60)} h ${totalMinutes % 60} min`
   } catch (error) {
-    registeredHours.value = '0'
+    registeredHours.value = '0 h 0 min'
     console.warn('No se pudo cargar el total de horas registradas:', error)
   }
 }
@@ -134,7 +135,7 @@ watch(
       loadRegisteredHours()
       void loadActiveSession()
     } else {
-      registeredHours.value = '0'
+      registeredHours.value = '0 h 0 min'
       activeSession.value = false
       elapsedSeconds.value = 0
     }

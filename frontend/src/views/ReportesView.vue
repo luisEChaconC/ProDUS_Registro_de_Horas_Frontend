@@ -9,18 +9,40 @@
         <label>Hasta <input v-model="endDate" type="date" /></label>
         <button type="button" :disabled="loading" @click="loadReports">Consultar</button>
       </div>
-      <section class="summary">Total del periodo: <strong>{{ (totalSeconds / 3600).toFixed(2) }} horas</strong></section>
+      <section class="summary">Total de horas registradas en el periodo seleccionado: <strong>{{ formatDuration(totalSeconds) }}</strong></section>
       <section v-if="loading" class="card">Cargando reportes...</section>
       <section v-else-if="reports.length" class="card">
         <div v-for="report in reports" :key="report.id" class="report-row">
-          <strong>{{ formatDate(report.check_in) }}</strong>
-          <span>{{ report.elapsed_seconds ? (Math.max(0, report.elapsed_seconds - report.break_minutes * 60) / 3600).toFixed(2) : '0.00' }} h</span>
-          <small>{{ report.status_code }}</small>
+          <div><strong>Inicio</strong><span>{{ formatDate(report.check_in) }}</span></div>
+          <div><strong>Finalización</strong><span>{{ formatDate(report.check_out) }}</span></div>
+          <div><strong>Horas contabilizadas</strong><span>{{ formatDuration(getWorkedSeconds(report)) }}</span></div>
+          <button type="button" @click="openDetails(report)">Ver detalles</button>
         </div>
       </section>
       <section v-else class="card empty">No hay jornadas cerradas en el periodo seleccionado.</section>
       <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
     </main>
+
+    <div v-if="selectedReport" class="modal-overlay" @click.self="closeDetails">
+      <section class="details-modal" role="dialog" aria-modal="true" aria-labelledby="details-title">
+        <div class="modal-heading">
+          <h3 id="details-title">Detalles del reporte</h3>
+          <button class="close-button" type="button" aria-label="Cerrar detalles" @click="closeDetails">×</button>
+        </div>
+        <div class="details-grid">
+          <div><strong>Fecha y hora de inicio</strong><span>{{ formatDate(selectedReport.check_in) }}</span></div>
+          <div><strong>Fecha y hora de finalización</strong><span>{{ formatDate(selectedReport.check_out) }}</span></div>
+          <div><strong>Horas contabilizadas</strong><span>{{ formatDuration(getWorkedSeconds(selectedReport)) }}</span></div>
+          <div><strong>Estado</strong><span>{{ selectedReport.status_code }}</span></div>
+          <div><strong>Proyecto</strong><span>{{ selectedReport.project_name || 'Sin proyecto' }}</span></div>
+          <div><strong>Encargado</strong><span>{{ selectedReport.manager_name || 'Sin encargado' }}</span></div>
+          <div><strong>Minutos de almuerzo</strong><span>{{ selectedReport.break_minutes }}</span></div>
+          <div class="full-width"><strong>Actividades realizadas</strong><span>{{ selectedReport.activities || selectedReport.work_description || 'Sin actividades registradas' }}</span></div>
+          <div class="full-width"><strong>Notas</strong><span>{{ selectedReport.notes || 'Sin notas' }}</span></div>
+        </div>
+        <button class="modal-close-button" type="button" @click="closeDetails">Cerrar</button>
+      </section>
+    </div>
   </div>
 </template>
 
@@ -39,10 +61,48 @@ const startDate = ref('')
 const endDate = ref('')
 const loading = ref(false)
 const errorMessage = ref('')
+const selectedReport = ref<TimeLogSession | null>(null)
 const roleLabel = computed(() => userRole.value || 'Usuario')
 
-function formatDate(value: string) {
+function formatDate(value: string | null) {
+  if (!value) return 'Pendiente'
   return new Intl.DateTimeFormat('es-MX', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
+}
+
+function getWorkedSeconds(report: TimeLogSession) {
+  return Math.max(0, report.elapsed_seconds - report.break_minutes * 60)
+}
+
+function formatDuration(seconds: number) {
+  const totalMinutes = Math.floor(Math.max(0, seconds) / 60)
+  return `${Math.floor(totalMinutes / 60)} h ${totalMinutes % 60} min`
+}
+
+function openDetails(report: TimeLogSession) {
+  selectedReport.value = report
+}
+
+function closeDetails() {
+  selectedReport.value = null
+}
+
+function formatInputDate(date: Date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function setCurrentWeek() {
+  const today = new Date()
+  const dayOfWeek = today.getDay()
+  const daysSinceMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1
+  const weekStart = new Date(today)
+  weekStart.setDate(today.getDate() - daysSinceMonday)
+  const weekEnd = new Date(weekStart)
+  weekEnd.setDate(weekStart.getDate() + 6)
+  startDate.value = formatInputDate(weekStart)
+  endDate.value = formatInputDate(weekEnd)
 }
 
 async function loadReports() {
@@ -64,7 +124,10 @@ async function handleLogout() {
   router.push('/login')
 }
 
-onMounted(() => { void loadReports() })
+onMounted(() => {
+  setCurrentWeek()
+  void loadReports()
+})
 </script>
 
 <style scoped>
@@ -77,9 +140,23 @@ label { display: flex; flex-direction: column; gap: .35rem; color: #374151; font
 input { padding: .55rem; border: 1px solid #cbd5e1; border-radius: 6px; }
 .summary, .card { margin-top: 1rem; padding: 1.25rem; background: white; border-radius: 10px; box-shadow: 0 4px 14px #00000012; }
 .summary strong { color: #0052a3; }
-.report-row { display: grid; grid-template-columns: 1fr auto auto; gap: 1rem; padding: .9rem 0; border-bottom: 1px solid #e5e7eb; }
-.report-row span { color: #0052a3; font-weight: 700; }
-.report-row small { color: #6b7280; }
+.report-row { display: grid; grid-template-columns: 1.3fr 1.3fr 1fr auto; gap: 1rem; align-items: center; padding: .9rem 0; border-bottom: 1px solid #e5e7eb; }
+.report-row div, .details-grid div { display: flex; flex-direction: column; gap: .3rem; }
+.report-row strong, .details-grid strong { color: #6b7280; font-size: .8rem; }
+.report-row span { color: #374151; }
+.report-row button, .modal-close-button { border: 0; border-radius: 6px; padding: .55rem .75rem; background: #0052a3; color: white; cursor: pointer; font: inherit; font-weight: 600; }
 .empty, .error { color: #6b7280; }
 .error { margin-top: 1rem; color: #b91c1c; }
+.modal-overlay { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 1rem; background: #00000059; }
+.details-modal { width: min(760px, 100%); max-height: 90vh; overflow: auto; padding: 1.5rem; background: white; border-radius: 10px; box-shadow: 0 8px 30px #0000002e; }
+.modal-heading { display: flex; justify-content: space-between; align-items: center; }
+.modal-heading h3 { margin: 0; color: #003d7a; }
+.close-button { border: 0; background: transparent; color: #374151; font-size: 1.8rem; cursor: pointer; }
+.details-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin: 1.5rem 0; }
+.full-width { grid-column: 1 / -1; }
+.modal-close-button { display: block; margin-left: auto; background: #64748b; }
+@media (max-width: 700px) {
+  .report-row, .details-grid { grid-template-columns: 1fr; }
+  .full-width { grid-column: auto; }
+}
 </style>

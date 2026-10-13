@@ -124,7 +124,11 @@ export interface TimeLogSession {
   check_in: string;
   check_out: string | null;
   status_code: string;
+  project_name: string | null;
+  manager_name: string | null;
   work_description: string;
+  activities: string;
+  notes: string;
   break_minutes: number;
   elapsed_seconds: number;
   is_active: boolean;
