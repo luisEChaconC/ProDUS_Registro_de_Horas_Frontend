@@ -663,7 +663,7 @@ onMounted(() => {
               {{ reportsLoading ? 'Consultando...' : 'Consultar' }}
             </button>
           </div>
-          <section class="report-total">
+          <section v-if="reportsScope === 'assistant'" class="report-total">
             Total de horas registradas en el periodo seleccionado:
             <strong>{{ formatDuration(reportTotalSeconds) }}</strong>
           </section>
