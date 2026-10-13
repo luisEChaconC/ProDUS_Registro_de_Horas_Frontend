@@ -12,7 +12,7 @@ import { useAuth } from '@/composables/useAuth'
 import api, { type AssistantAdminDetail, type AssistantReport, type ScheduleBlockInput } from '@/services/api'
 
 const router = useRouter()
-const { userRole, userName, logout } = useAuth()
+const { userRole, userName, userId, logout } = useAuth()
 const showAssistantForm = ref(false)
 const showErrorModal = ref(false)
 const errorMessages = ref<string[]>([])
@@ -31,8 +31,8 @@ const assistantColumns = [
 
 const assistantActions = [
   { key: 'edit', label: 'Editar' },
-  { key: 'reports', label: 'Ver reportes' }
-  // { key: 'delete', label: 'Eliminar', disabledField: 'canDelete' }
+  { key: 'reports', label: 'Ver reportes' },
+  { key: 'delete', label: 'Borrar' }
 ]
 
 interface AssistantRow {
@@ -41,7 +41,6 @@ interface AssistantRow {
   name: string
   role: string
   status: string
-  // canDelete: boolean
 }
 
 const assistants = ref<AssistantRow[]>([])
@@ -86,7 +85,6 @@ const loadAssistants = async () => {
       name: item.full_name,
       role: 'Asistente',
       status: item.is_active ? 'Activo' : 'Inactivo',
-      // canDelete: false,
     }))
   } catch (error) {
   }
@@ -156,6 +154,25 @@ const onAssistantAction = (payload: { actionKey: string; item: Record<string, un
     void openAssistantEditor(Number(payload.item.id))
   } else if (payload.actionKey === 'reports') {
     void openAssistantReports(Number(payload.item.id))
+  } else if (payload.actionKey === 'delete') {
+    const assistant = assistants.value.find((item) => item.id === Number(payload.item.id))
+    if (assistant) void deleteAssistant(assistant)
+  }
+}
+
+const deleteAssistant = async (assistant: AssistantRow) => {
+  if (userId.value === assistant.id) {
+    window.alert('No puedes eliminar tu propio usuario.')
+    return
+  }
+  if (!window.confirm(`¿Deseas eliminar al asistente "${assistant.username}"? Esta acción no se puede deshacer.`)) return
+
+  try {
+    await api.deleteUser(assistant.id)
+    await loadAssistants()
+  } catch (error) {
+    errorMessages.value = [error instanceof Error ? error.message : 'No se pudo eliminar el asistente.']
+    showErrorModal.value = true
   }
 }
 
@@ -354,7 +371,7 @@ onMounted(() => {
 
     <!-- Contenido principal -->
     <div class="main-content">
-      <button @click="goBack" class="back-button">← Volver</button>
+      <button @click="goBack" class="back-button">Volver al inicio</button>
 
       <GenericDataList
         title="Gestión de Asistentes"
@@ -508,16 +525,17 @@ onMounted(() => {
   display: inline-block;
   padding: 0.5rem 1rem;
   margin-bottom: 1.5rem;
-  background-color: #e0e0e0;
-  border: none;
-  border-radius: 4px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  color: #003d7a;
   cursor: pointer;
-  font-size: 0.95rem;
-  transition: background-color 0.3s;
+  font: inherit;
+  font-weight: 600;
 }
 
 .back-button:hover {
-  background-color: #d0d0d0;
+  background: #f8fafc;
 }
 
 .schedule-action-row {
