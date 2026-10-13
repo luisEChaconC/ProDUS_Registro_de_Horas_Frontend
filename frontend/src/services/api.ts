@@ -124,7 +124,9 @@ export interface TimeLogSession {
   check_in: string;
   check_out: string | null;
   status_code: string;
+  project_id?: number | null;
   project_name: string | null;
+  manager_user_id?: number | null;
   manager_name: string | null;
   work_description: string;
   activities: string;
@@ -503,11 +505,18 @@ class ApiService {
     return response.assistant;
   }
 
-  async getAssistantReports(id: number): Promise<AssistantReport[]> {
-    const response = await this.request<{ ok: boolean; results: AssistantReport[] }>(
-      `/timelogs/admin/assistants/${id}/reports/`,
+  async getAssistantReports(id: number, params?: {
+    start_date?: string;
+    end_date?: string;
+  }): Promise<{ results: AssistantReport[]; total_seconds: number }> {
+    const query = new URLSearchParams();
+    if (params?.start_date) query.set('start_date', params.start_date);
+    if (params?.end_date) query.set('end_date', params.end_date);
+    const suffix = query.toString() ? `?${query}` : '';
+    const response = await this.request<{ ok: boolean; results: AssistantReport[]; total_seconds: number }>(
+      `/timelogs/admin/assistants/${id}/reports/${suffix}`,
     );
-    return response.results;
+    return { results: response.results, total_seconds: response.total_seconds };
   }
 
   async updateAssistantReport(id: number, report: Partial<AssistantReport> & { id: number }): Promise<AssistantReport> {
