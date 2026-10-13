@@ -371,7 +371,7 @@ onMounted(() => {
 
     <!-- Contenido principal -->
     <div class="main-content">
-      <button @click="goBack" class="back-button">← Volver</button>
+      <button @click="goBack" class="back-button">Volver al inicio</button>
 
       <GenericDataList
         title="Gestión de Asistentes"
@@ -525,16 +525,17 @@ onMounted(() => {
   display: inline-block;
   padding: 0.5rem 1rem;
   margin-bottom: 1.5rem;
-  background-color: #e0e0e0;
-  border: none;
-  border-radius: 4px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  color: #003d7a;
   cursor: pointer;
-  font-size: 0.95rem;
-  transition: background-color 0.3s;
+  font: inherit;
+  font-weight: 600;
 }
 
 .back-button:hover {
-  background-color: #d0d0d0;
+  background: #f8fafc;
 }
 
 .schedule-action-row {

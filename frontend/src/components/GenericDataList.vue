@@ -42,6 +42,11 @@ const getValue = (item: Record<string, unknown>, key: string): string => {
   return String(value)
 }
 
+const getCellClass = (key: string, item: Record<string, unknown>) => {
+  if (key !== 'status') return ''
+  return item[key] === 'Activo' ? 'status active' : 'status inactive'
+}
+
 const isDisabled = (item: Record<string, unknown>, action: ListAction): boolean => {
   if (!action.disabledField) return false
   return !Boolean(item[action.disabledField])
@@ -66,12 +71,18 @@ const onAction = (actionKey: string, item: Record<string, unknown>) => {
       </div>
 
       <div class="generic-list-row" :style="gridColumns" v-for="(item, index) in items" :key="index">
-        <span v-for="column in columns" :key="column.key">{{ getValue(item, column.key) }}</span>
+        <span
+          v-for="column in columns"
+          :key="column.key"
+          :class="getCellClass(column.key, item)"
+        >
+          {{ getValue(item, column.key) }}
+        </span>
         <div class="row-actions" v-if="props.actions.length > 0">
           <button
             v-for="action in props.actions"
             :key="action.key"
-            class="row-action-btn"
+            :class="['row-action-btn', `action-${action.key}`]"
             type="button"
             :disabled="isDisabled(item, action)"
             @click="onAction(action.key, item)"
@@ -155,19 +166,47 @@ const onAction = (actionKey: string, item: Record<string, unknown>) => {
 }
 
 .row-action-btn {
-  border: 1px solid #003d7a;
-  background: #ffffff;
-  color: #003d7a;
+  border: 0;
+  background: #64748b;
+  color: #ffffff;
   padding: 0.3rem 0.55rem;
   border-radius: 6px;
-  font-size: 0.78rem;
+  font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
+}
+
+.action-edit,
+.action-reports {
+  background: #0052a3;
+}
+
+.action-delete {
+  background: #dc2626;
 }
 
 .row-action-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.status {
+  display: inline-block;
+  width: fit-content;
+  border-radius: 999px;
+  padding: 0.25rem 0.65rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.status.active {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.status.inactive {
+  background: #fee2e2;
+  color: #991b1b;
 }
 
 .empty-state {
