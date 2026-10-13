@@ -8,6 +8,9 @@
         <label>Desde <input v-model="startDate" type="date" /></label>
         <label>Hasta <input v-model="endDate" type="date" /></label>
         <button type="button" :disabled="loading" @click="loadReports">Consultar</button>
+        <button type="button" :disabled="loading || !reports.length" @click="exportReports">
+          Exportar CSV
+        </button>
       </div>
       <section class="summary">Total de horas registradas en el periodo seleccionado: <strong>{{ formatDuration(totalSeconds) }}</strong></section>
       <section v-if="loading" class="card">Cargando reportes...</section>
@@ -76,6 +79,47 @@ function getWorkedSeconds(report: TimeLogSession) {
 function formatDuration(seconds: number) {
   const totalMinutes = Math.floor(Math.max(0, seconds) / 60)
   return `${Math.floor(totalMinutes / 60)} h ${totalMinutes % 60} min`
+}
+
+function csvValue(value: string | number | null) {
+  const text = value === null ? '' : String(value)
+  return `"${text.replace(/"/g, '""').replace(/\r?\n/g, ' ')}"`
+}
+
+function exportReports() {
+  if (!reports.value.length) return
+  const headers = [
+    'Inicio',
+    'Finalización',
+    'Horas contabilizadas',
+    'Estado',
+    'Proyecto',
+    'Encargado',
+    'Minutos de almuerzo',
+    'Actividades realizadas',
+    'Descripción del trabajo',
+    'Notas',
+  ]
+  const rows = reports.value.map((report) => [
+    formatDate(report.check_in),
+    formatDate(report.check_out),
+    formatDuration(getWorkedSeconds(report)),
+    report.status_code,
+    report.project_name || 'Sin proyecto',
+    report.manager_name || 'Sin encargado',
+    report.break_minutes,
+    report.activities || '',
+    report.work_description || '',
+    report.notes || '',
+  ])
+  const csv = [headers, ...rows].map((row) => row.map(csvValue).join(';')).join('\r\n')
+  const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `mis-reportes-${startDate.value || 'todos'}-${endDate.value || 'todos'}.csv`
+  link.click()
+  URL.revokeObjectURL(url)
 }
 
 function openDetails(report: TimeLogSession) {

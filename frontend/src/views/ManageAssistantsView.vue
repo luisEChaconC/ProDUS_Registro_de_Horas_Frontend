@@ -3,7 +3,6 @@ import { onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AppHeader from '@/components/AppHeader.vue'
 import AppButton from '@/components/AppButton.vue'
-import GenericDataList from '@/components/GenericDataList.vue'
 import GenericForm from '@/components/GenericForm.vue'
 import ScheduleBuilder from '@/components/ScheduleBuilder.vue'
 import ErrorModal from '@/components/ErrorModal.vue'
@@ -23,18 +22,6 @@ const isScheduleConfirmed = ref(false)
 const ASSISTANT_SCHEDULE_STORAGE_KEY = 'assistant_create_schedule_blocks'
 const ASSISTANT_SCHEDULE_DRAFT_STORAGE_KEY = 'assistant_create_schedule_draft_blocks'
 
-const assistantColumns = [
-  { key: 'name', label: 'Usuario' },
-  { key: 'role', label: 'Rol' },
-  { key: 'status', label: 'Estado' }
-]
-
-const assistantActions = [
-  { key: 'edit', label: 'Editar' },
-  { key: 'reports', label: 'Ver reportes' },
-  { key: 'delete', label: 'Borrar' }
-]
-
 interface AssistantRow {
   id: number
   username: string
@@ -44,11 +31,13 @@ interface AssistantRow {
 }
 
 const assistants = ref<AssistantRow[]>([])
+const assistantsLoading = ref(true)
 const editingAssistant = ref<AssistantAdminDetail | null>(null)
 const assistantReports = ref<AssistantReport[]>([])
 const showEditModal = ref(false)
 const showReportsModal = ref(false)
 const reportsAssistant = ref<AssistantRow | null>(null)
+const reportsScope = ref<'assistant' | 'all'>('assistant')
 const reportsLoading = ref(false)
 const reportsError = ref('')
 const reportSuccess = ref('')
@@ -105,6 +94,49 @@ const formatDuration = (seconds: number) => {
   return `${Math.floor(totalMinutes / 60)} h ${totalMinutes % 60} min`
 }
 
+const csvValue = (value: string | number | null) => {
+  const text = value === null ? '' : String(value)
+  return `"${text.replace(/"/g, '""').replace(/\r?\n/g, ' ')}"`
+}
+
+const exportReports = () => {
+  if (!assistantReports.value.length) return
+  const headers = [
+    ...(reportsScope.value === 'all' ? ['Asistente'] : []),
+    'Inicio',
+    'Finalización',
+    'Horas contabilizadas',
+    'Estado',
+    'Proyecto',
+    'Encargado',
+    'Minutos de almuerzo',
+    'Actividades realizadas',
+    'Descripción del trabajo',
+    'Notas',
+  ]
+  const rows = assistantReports.value.map((report) => [
+    ...(reportsScope.value === 'all' ? [report.assistant_name || 'Sin nombre'] : []),
+    formatReportDate(report.check_in),
+    formatReportDate(report.check_out),
+    formatDuration(getWorkedSeconds(report)),
+    report.status_code,
+    report.project_name || 'Sin proyecto',
+    report.manager_name || 'Sin encargado',
+    report.break_minutes,
+    report.activities || '',
+    report.work_description || '',
+    report.notes || '',
+  ])
+  const csv = [headers, ...rows].map((row) => row.map(csvValue).join(';')).join('\r\n')
+  const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `${reportsScope.value === 'all' ? 'reportes-todos-los-asistentes' : 'reportes-asistente'}-${reportStartDate.value || 'todos'}-${reportEndDate.value || 'todos'}.csv`
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
 const formatReportDate = (value: string | null) => {
   if (!value) return 'Pendiente'
   return new Intl.DateTimeFormat('es-MX', {
@@ -114,6 +146,7 @@ const formatReportDate = (value: string | null) => {
 }
 
 const loadAssistants = async () => {
+  assistantsLoading.value = true
   try {
     const response = await api.listAssistants()
     assistants.value = response.results.map((item) => ({
@@ -124,6 +157,10 @@ const loadAssistants = async () => {
       status: item.is_active ? 'Activo' : 'Inactivo',
     }))
   } catch (error) {
+    errorMessages.value = [error instanceof Error ? error.message : 'No se pudieron cargar los asistentes.']
+    showErrorModal.value = true
+  } finally {
+    assistantsLoading.value = false
   }
 }
 
@@ -186,15 +223,14 @@ const onConfirmScheduleModal = () => {
   showScheduleModal.value = false
 }
 
-const onAssistantAction = (payload: { actionKey: string; item: Record<string, unknown> }) => {
-  if (payload.actionKey === 'edit') {
-    void openAssistantEditor(Number(payload.item.id))
-  } else if (payload.actionKey === 'reports') {
-    void openAssistantReports(Number(payload.item.id))
-  } else if (payload.actionKey === 'delete') {
-    const assistant = assistants.value.find((item) => item.id === Number(payload.item.id))
-    if (assistant) void deleteAssistant(assistant)
-  }
+const openAllReports = async () => {
+  showReportsModal.value = true
+  reportsError.value = ''
+  reportSuccess.value = ''
+  reportsScope.value = 'all'
+  reportsAssistant.value = null
+  setCurrentReportWeek()
+  await loadAssistantReports()
 }
 
 const deleteAssistant = async (assistant: AssistantRow) => {
@@ -243,20 +279,27 @@ const openAssistantReports = async (assistantId: number) => {
   showReportsModal.value = true
   reportsError.value = ''
   reportSuccess.value = ''
+  reportsScope.value = 'assistant'
   reportsAssistant.value = assistants.value.find((assistant) => assistant.id === assistantId) || null
   setCurrentReportWeek()
   await loadAssistantReports(assistantId)
 }
 
 const loadAssistantReports = async (assistantId = reportsAssistant.value?.id) => {
-  if (!assistantId) return
+  if (reportsScope.value === 'assistant' && !assistantId) return
   reportsLoading.value = true
+  reportsError.value = ''
   try {
     const [reports, projects, managers] = await Promise.all([
-      api.getAssistantReports(assistantId, {
-        start_date: reportStartDate.value || undefined,
-        end_date: reportEndDate.value || undefined,
-      }),
+      reportsScope.value === 'all'
+        ? api.getAllAssistantReports({
+            start_date: reportStartDate.value || undefined,
+            end_date: reportEndDate.value || undefined,
+          })
+        : api.getAssistantReports(assistantId as number, {
+            start_date: reportStartDate.value || undefined,
+            end_date: reportEndDate.value || undefined,
+          }),
       api.getActiveProjects(),
       api.getActiveCoordinators(),
     ])
@@ -312,6 +355,7 @@ const closeAssistantReports = () => {
   reportEndDate.value = ''
   reportTotalSeconds.value = 0
   reportSuccess.value = ''
+  reportsScope.value = 'assistant'
 }
 
 const openReportDetails = (report: AssistantReport) => {
@@ -357,12 +401,12 @@ const saveAssistantEditor = async () => {
 }
 
 const saveReport = async (report: AssistantReport) => {
-  if (!reportsAssistant.value) return
+  if (reportsScope.value === 'assistant' && !reportsAssistant.value) return
   reportSaving.value = true
   reportsError.value = ''
   reportSuccess.value = ''
   try {
-    const updated = await api.updateAssistantReport(reportsAssistant.value.id, {
+    const payload = {
       id: report.id,
       check_in: toApiDateTime(report.check_in),
       check_out: report.check_out ? toApiDateTime(report.check_out) : null,
@@ -372,7 +416,10 @@ const saveReport = async (report: AssistantReport) => {
       activities: report.activities,
       notes: report.notes,
       break_minutes: report.break_minutes,
-    })
+    }
+    const updated = reportsScope.value === 'all'
+      ? await api.updateAllAssistantReport(payload)
+      : await api.updateAssistantReport(reportsAssistant.value!.id, payload)
     const index = assistantReports.value.findIndex((item) => item.id === updated.id)
     if (index >= 0) {
       const savedReport = {
@@ -406,9 +453,13 @@ const toApiDateTime = (value: string) => {
 }
 
 const deleteReport = async (report: AssistantReport) => {
-  if (!reportsAssistant.value || !window.confirm('¿Eliminar este reporte de horas?')) return
+  if ((reportsScope.value === 'assistant' && !reportsAssistant.value) || !window.confirm('¿Eliminar este reporte de horas?')) return
   try {
-    await api.deleteAssistantReport(reportsAssistant.value.id, report.id)
+    if (reportsScope.value === 'all') {
+      await api.deleteAllAssistantReport(report.id)
+    } else {
+      await api.deleteAssistantReport(reportsAssistant.value!.id, report.id)
+    }
     assistantReports.value = assistantReports.value.filter((item) => item.id !== report.id)
     if (selectedReport.value?.id === report.id) closeReportDetails()
   } catch (error) {
@@ -514,17 +565,43 @@ onMounted(() => {
 
     <!-- Contenido principal -->
     <div class="main-content">
-      <button @click="goBack" class="back-button">Volver al inicio</button>
-
-      <GenericDataList
-        title="Gestión de Asistentes"
-        :columns="assistantColumns"
-        :items="assistants"
-        :actions="assistantActions"
-        add-button-label="Añadir nuevo asistente"
-        @add="onAddAssistant"
-        @action="onAssistantAction"
-      />
+      <button class="back-button" type="button" @click="goBack">Volver al inicio</button>
+      <div class="heading">
+        <div>
+          <p class="eyebrow">Administración</p>
+          <h2>Asistentes del sistema</h2>
+          <p class="intro">Crea, edita, consulta reportes o elimina usuarios con rol asistente.</p>
+        </div>
+        <div class="heading-actions">
+          <button type="button" class="secondary-heading-button" @click="openAllReports">Gestionar reportes de todos los asistentes</button>
+          <button type="button" class="primary-button" @click="onAddAssistant">Añadir asistente</button>
+        </div>
+      </div>
+      <section v-if="assistantsLoading" class="card state">Cargando asistentes...</section>
+      <section v-else-if="assistants.length === 0" class="card state">No hay asistentes registrados.</section>
+      <section v-else class="card table-wrapper">
+        <table>
+          <thead>
+            <tr><th>Usuario</th><th>Nombre completo</th><th>Estado</th><th>Acciones</th></tr>
+          </thead>
+          <tbody>
+            <tr v-for="assistant in assistants" :key="assistant.id">
+              <td>{{ assistant.username }}</td>
+              <td>{{ assistant.name || '-' }}</td>
+              <td>
+                <span :class="['status', assistant.status === 'Activo' ? 'active' : 'inactive']">
+                  {{ assistant.status }}
+                </span>
+              </td>
+              <td class="actions">
+                <button class="edit-button" type="button" @click="openAssistantEditor(assistant.id)">Editar</button>
+                <button class="reports-button" type="button" @click="openAssistantReports(assistant.id)">Ver reportes</button>
+                <button class="delete-button" type="button" @click="deleteAssistant(assistant)">Borrar</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
 
       <div v-if="showAssistantForm" class="schedule-modal-overlay">
         <div class="new-assistant-modal-card">
@@ -620,7 +697,7 @@ onMounted(() => {
       <div v-if="showReportsModal" class="schedule-modal-overlay">
         <div class="edit-modal-card reports-modal-card">
           <div class="modal-heading">
-            <h2>Reportes de {{ reportsAssistant?.name || 'asistente' }}</h2>
+            <h2>{{ reportsScope === 'all' ? 'Reportes de todos los asistentes' : `Reportes de ${reportsAssistant?.name || 'asistente'}` }}</h2>
           </div>
           <div class="report-filters">
             <label>Desde <input v-model="reportStartDate" type="date" /></label>
@@ -628,8 +705,11 @@ onMounted(() => {
             <button type="button" class="save-button" :disabled="reportsLoading" @click="consultAssistantReports">
               {{ reportsLoading ? 'Consultando...' : 'Consultar' }}
             </button>
+            <button type="button" class="secondary-button" :disabled="reportsLoading || !assistantReports.length" @click="exportReports">
+              Exportar CSV
+            </button>
           </div>
-          <section class="report-total">
+          <section v-if="reportsScope === 'assistant'" class="report-total">
             Total de horas registradas en el periodo seleccionado:
             <strong>{{ formatDuration(reportTotalSeconds) }}</strong>
           </section>
@@ -638,7 +718,12 @@ onMounted(() => {
             Este asistente no tiene reportes.
           </p>
           <div v-if="!selectedReport" class="report-preview-list">
-            <div v-for="report in assistantReports" :key="report.id" class="report-preview-row">
+            <div
+              v-for="report in assistantReports"
+              :key="report.id"
+              :class="['report-preview-row', { 'all-reports-preview-row': reportsScope === 'all' }]"
+            >
+              <div v-if="reportsScope === 'all'"><strong>Asistente</strong><span>{{ report.assistant_name || 'Sin nombre' }}</span></div>
               <div><strong>Inicio</strong><span>{{ formatReportDate(report.check_in) }}</span></div>
               <div><strong>Finalización</strong><span>{{ formatReportDate(report.check_out) }}</span></div>
               <div><strong>Horas contabilizadas</strong><span>{{ formatDuration(getWorkedSeconds(report)) }}</span></div>
@@ -648,6 +733,7 @@ onMounted(() => {
           <div v-else class="report-editor">
             <div class="report-summary">
               <div>
+                <strong v-if="reportsScope === 'all'">Asistente: {{ selectedReport.assistant_name || 'Sin nombre' }}</strong>
                 <strong>Horas contabilizadas</strong>
                 <span>{{ formatDuration(getWorkedSeconds(selectedReport)) }}</span>
               </div>
@@ -752,6 +838,55 @@ onMounted(() => {
   background: #f8fafc;
 }
 
+.heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+.eyebrow {
+  margin: 0 0 .25rem;
+  color: #0052a3;
+  font-size: .8rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+h2 { margin: 0; color: #003d7a; }
+.intro { margin: .5rem 0 0; color: #6b7280; }
+.heading-actions { display: flex; gap: .75rem; flex-wrap: wrap; }
+.primary-button, .secondary-heading-button {
+  border: 0;
+  border-radius: 7px;
+  padding: .65rem 1rem;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+}
+.primary-button { background: #0052a3; color: #fff; }
+.secondary-heading-button { background: #64748b; color: #fff; }
+.card { background: #fff; border-radius: 12px; box-shadow: 0 4px 14px #00000012; }
+.state { padding: 2rem; color: #6b7280; text-align: center; }
+.table-wrapper { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; min-width: 780px; }
+th, td { padding: 1rem; border-bottom: 1px solid #e5e7eb; text-align: left; }
+th { background: #f8fafc; color: #003d7a; }
+.status { display: inline-block; border-radius: 999px; padding: .25rem .65rem; font-size: .8rem; font-weight: 700; }
+.active { background: #dcfce7; color: #166534; }
+.inactive { background: #fee2e2; color: #991b1b; }
+.actions { display: flex; gap: .5rem; flex-wrap: wrap; }
+.actions button {
+  border: 0;
+  border-radius: 6px;
+  padding: .55rem .75rem;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+}
+.edit-button, .reports-button { background: #0052a3; color: #fff; }
+.actions .delete-button { background: #dc2626; color: #fff; }
+
 .schedule-action-row {
   margin-top: 1rem;
   display: flex;
@@ -853,6 +988,7 @@ onMounted(() => {
 .report-toast-success { background: var(--color-success-dark); }
 .report-toast-error { background: var(--color-error-dark); }
 .report-preview-row { display: grid; grid-template-columns: 1.3fr 1.3fr 1fr auto; gap: 1rem; align-items: center; padding: .9rem 0; border-bottom: 1px solid var(--color-border); }
+.all-reports-preview-row { grid-template-columns: 1.2fr 1.3fr 1.3fr 1fr auto; }
 .report-preview-row div { display: flex; flex-direction: column; gap: .3rem; }
 .report-preview-row strong { color: #6b7280; font-size: .8rem; }
 .report-summary { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
@@ -870,7 +1006,10 @@ onMounted(() => {
 .save-button { background: #0052a3; }
 .delete-button { background: #dc2626; }
 @media (max-width: 800px) {
-  .edit-grid, .schedule-edit-row, .report-details-grid, .report-preview-row { grid-template-columns: 1fr; }
+  .main-content { padding: 1.5rem 1rem; }
+  .heading { align-items: flex-start; flex-direction: column; }
+  .heading-actions { width: 100%; }
+  .edit-grid, .schedule-edit-row, .report-details-grid, .report-preview-row, .all-reports-preview-row { grid-template-columns: 1fr; }
   .full-width { grid-column: auto; }
   .report-summary { align-items: flex-start; flex-direction: column; gap: .75rem; }
   .report-detail-actions { flex-direction: column-reverse; }

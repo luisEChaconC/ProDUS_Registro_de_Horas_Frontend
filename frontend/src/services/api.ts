@@ -105,6 +105,8 @@ export interface ScheduleBlockInput {
 
 export interface AssistantReport extends TimeLogSession {
   id: number;
+  assistant_id?: number;
+  assistant_name?: string;
 }
 
 export interface UserListItem {
@@ -519,6 +521,20 @@ class ApiService {
     return { results: response.results, total_seconds: response.total_seconds };
   }
 
+  async getAllAssistantReports(params?: {
+    start_date?: string;
+    end_date?: string;
+  }): Promise<{ results: AssistantReport[]; total_seconds: number }> {
+    const query = new URLSearchParams();
+    if (params?.start_date) query.set('start_date', params.start_date);
+    if (params?.end_date) query.set('end_date', params.end_date);
+    const suffix = query.toString() ? `?${query}` : '';
+    const response = await this.request<{ ok: boolean; results: AssistantReport[]; total_seconds: number }>(
+      `/timelogs/admin/reports/${suffix}`,
+    );
+    return { results: response.results, total_seconds: response.total_seconds };
+  }
+
   async updateAssistantReport(id: number, report: Partial<AssistantReport> & { id: number }): Promise<AssistantReport> {
     const response = await this.patch<{ ok: boolean; report: AssistantReport }>(
       `/timelogs/admin/assistants/${id}/reports/`,
@@ -527,8 +543,23 @@ class ApiService {
     return response.report;
   }
 
+  async updateAllAssistantReport(report: Partial<AssistantReport> & { id: number }): Promise<AssistantReport> {
+    const response = await this.patch<{ ok: boolean; report: AssistantReport }>(
+      '/timelogs/admin/reports/',
+      report,
+    );
+    return response.report;
+  }
+
   async deleteAssistantReport(id: number, reportId: number): Promise<void> {
     await this.request(`/timelogs/admin/assistants/${id}/reports/`, {
+      method: 'DELETE',
+      body: JSON.stringify({ id: reportId }),
+    });
+  }
+
+  async deleteAllAssistantReport(reportId: number): Promise<void> {
+    await this.request('/timelogs/admin/reports/', {
       method: 'DELETE',
       body: JSON.stringify({ id: reportId }),
     });
