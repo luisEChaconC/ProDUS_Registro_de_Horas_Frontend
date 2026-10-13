@@ -8,6 +8,7 @@ import HorariosView from "../views/HorariosView.vue";
 import ReportesView from "../views/ReportesView.vue";
 import ManageUsersView from "../views/ManageUsersView.vue";
 import ManageManagersView from "../views/ManageCoordinatorsView.vue";
+import ManageProjectsView from "../views/ManageProjectsView.vue";
 
 // Extender tipo de RouteMeta para agregar requiredRoles
 declare module "vue-router" {
@@ -59,7 +60,12 @@ const getUserRoleFromToken = (): string | null => {
     );
     const decoded = JSON.parse(jsonPayload);
     if (decoded.is_admin || decoded.is_superuser) return 'admin';
-    return decoded.role || null;
+
+    const role = String(decoded.role || '').trim().toLowerCase();
+    if (role === 'administrador') return 'admin';
+    if (role === 'coordinator') return 'coordinador';
+    if (role === 'assistant') return 'asistente';
+    return role || null;
   } catch {
     return null;
   }
@@ -125,6 +131,12 @@ const router = createRouter({
       path: "/gestionar-coordinadores",
       name: "manage-coordinators",
       component: ManageManagersView,
+      meta: { requiresAuth: true, requiredRoles: ['admin'] },
+    },
+    {
+      path: "/gestionar-proyectos",
+      name: "manage-projects",
+      component: ManageProjectsView,
       meta: { requiresAuth: true, requiredRoles: ['admin'] },
     },
   ],
