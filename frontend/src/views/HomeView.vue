@@ -16,6 +16,8 @@ const activeUsersCount = ref(0)
 const activeAssistantsCount = ref(0)
 const activeProjectsCount = ref(0)
 const registeredHours = ref('0 h 0 min')
+const deficitHours = ref('0 h 0 min')
+const deficitSeconds = ref(0)
 const registeredHoursPeriod = ref<'day' | 'week' | 'month'>('week')
 const activeSession = ref(false)
 const elapsedSeconds = ref(0)
@@ -59,8 +61,13 @@ const loadRegisteredHours = async () => {
     const response = await api.getWorkSessionHistory(registeredHoursPeriod.value)
     const totalMinutes = Math.floor(Math.max(0, response.total_seconds) / 60)
     registeredHours.value = `${Math.floor(totalMinutes / 60)} h ${totalMinutes % 60} min`
+    deficitSeconds.value = response.deficit_seconds
+    const deficitMinutes = Math.floor(Math.abs(response.deficit_seconds) / 60)
+    deficitHours.value = `${Math.floor(deficitMinutes / 60)} h ${deficitMinutes % 60} min`
   } catch (error) {
     registeredHours.value = '0 h 0 min'
+    deficitSeconds.value = 0
+    deficitHours.value = '0 h 0 min'
     console.warn('No se pudo cargar el total de horas registradas:', error)
   }
 }
@@ -136,6 +143,8 @@ watch(
       void loadActiveSession()
     } else {
       registeredHours.value = '0 h 0 min'
+      deficitSeconds.value = 0
+      deficitHours.value = '0 h 0 min'
       activeSession.value = false
       elapsedSeconds.value = 0
     }
@@ -251,6 +260,10 @@ const handleLogout = async () => {
             <strong>{{ registeredHours }}</strong>
             <small>{{ periodLabels[registeredHoursPeriod] }} · horas efectivas</small>
           </div>
+          <div :class="['hours-card', 'deficit-card', deficitSeconds < 0 ? 'deficit-negative' : 'deficit-positive']">
+            <span>Balance de horas</span>
+            <strong>{{ deficitSeconds < 0 ? '-' : '+' }}{{ deficitHours }}</strong>
+          </div>
           <InfoCard label="Pendiente de Valoración" value="0" />
         </div>
       </section>
@@ -358,6 +371,31 @@ const handleLogout = async () => {
 
 .hours-card small {
   color: #6b7280;
+}
+
+.deficit-card {
+  border-left-color: #b91c1c;
+}
+
+.deficit-card > span {
+  display: block;
+  color: #666;
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.deficit-card strong {
+  color: #b91c1c;
+}
+
+.deficit-positive {
+  border-left-color: #15803d;
+}
+
+.deficit-positive strong {
+  color: #15803d;
 }
 
 .session-card {

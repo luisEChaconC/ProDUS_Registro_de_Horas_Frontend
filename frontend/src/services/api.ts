@@ -155,6 +155,9 @@ export interface WorkSessionHistoryResponse {
   period: 'day' | 'week' | 'month';
   total_seconds: number;
   sessions: TimeLogSession[];
+  cumulative_total_seconds: number;
+  expected_total_seconds: number;
+  deficit_seconds: number;
 }
 
 export interface ScheduleBlock {
