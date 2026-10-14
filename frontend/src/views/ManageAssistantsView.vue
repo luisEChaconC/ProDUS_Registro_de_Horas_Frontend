@@ -769,24 +769,26 @@ onMounted(() => {
           <div class="modal-heading">
             <h2>{{ reportsScope === 'all' ? 'Reportes de todos los asistentes' : `Reportes de ${reportsAssistant?.name || 'asistente'}` }}</h2>
           </div>
-          <div class="report-filters">
-            <label>Desde <input v-model="reportStartDate" type="date" /></label>
-            <label>Hasta <input v-model="reportEndDate" type="date" /></label>
-            <button type="button" class="save-button" :disabled="reportsLoading" @click="consultAssistantReports">
-              {{ reportsLoading ? 'Consultando...' : 'Consultar' }}
-            </button>
-            <button type="button" class="secondary-button" :disabled="reportsLoading || !assistantReports.length" @click="exportReports">
-              Exportar CSV
-            </button>
-          </div>
-          <section v-if="reportsScope === 'assistant'" class="report-total">
-            Total de horas registradas en el periodo seleccionado:
-            <strong>{{ formatDuration(reportTotalSeconds) }}</strong>
-          </section>
-          <p v-if="reportsLoading">Cargando reportes...</p>
-          <p v-if="!reportsLoading && !reportsError && !assistantReports.length">
-            Este asistente no tiene reportes.
-          </p>
+          <template v-if="!showCreateReportForm">
+            <div class="report-filters">
+              <label>Desde <input v-model="reportStartDate" type="date" /></label>
+              <label>Hasta <input v-model="reportEndDate" type="date" /></label>
+              <button type="button" class="save-button" :disabled="reportsLoading" @click="consultAssistantReports">
+                {{ reportsLoading ? 'Consultando...' : 'Consultar' }}
+              </button>
+              <button type="button" class="secondary-button" :disabled="reportsLoading || !assistantReports.length" @click="exportReports">
+                Exportar CSV
+              </button>
+            </div>
+            <section v-if="reportsScope === 'assistant'" class="report-total">
+              Total de horas registradas en el periodo seleccionado:
+              <strong>{{ formatDuration(reportTotalSeconds) }}</strong>
+            </section>
+            <p v-if="reportsLoading">Cargando reportes...</p>
+            <p v-if="!reportsLoading && !reportsError && !assistantReports.length">
+              Este asistente no tiene reportes.
+            </p>
+          </template>
           <form v-if="showCreateReportForm" class="report-editor" @submit.prevent="createAssistantReport">
             <div class="report-summary">
               <strong>Nuevo reporte para {{ reportsAssistant?.name || 'asistente' }}</strong>
