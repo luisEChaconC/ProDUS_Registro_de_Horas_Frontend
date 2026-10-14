@@ -4,13 +4,14 @@ import { useRouter } from 'vue-router'
 import AppHeader from '@/components/AppHeader.vue'
 import GenericForm from '@/components/GenericForm.vue'
 import { useAuth } from '@/composables/useAuth'
+import { useToast } from '@/composables/useToast'
 import api, { type ProjectAdminItem } from '@/services/api'
 
 const router = useRouter()
 const { userName, userRole, logout } = useAuth()
+const { showToast } = useToast()
 const projects = ref<ProjectAdminItem[]>([])
 const loading = ref(true)
-const errorMessage = ref('')
 const successMessage = ref('')
 const showInactive = ref(false)
 const showModal = ref(false)
@@ -24,11 +25,10 @@ const projectFields = [
 
 const loadProjects = async () => {
   loading.value = true
-  errorMessage.value = ''
   try {
     projects.value = (await api.listAdminProjects(showInactive.value)).results
   } catch (error) {
-    errorMessage.value = error instanceof Error ? error.message : 'No se pudieron cargar los proyectos.'
+    showToast(error instanceof Error ? error.message : 'No se pudieron cargar los proyectos.', 'error')
   } finally {
     loading.value = false
   }
@@ -52,7 +52,6 @@ const closeModal = () => {
 }
 
 const saveProject = async (values: Record<string, unknown>) => {
-  errorMessage.value = ''
   successMessage.value = ''
   try {
     const payload = { name: String(values.name || '').trim(), is_active: Boolean(values.is_active) }
@@ -66,7 +65,7 @@ const saveProject = async (values: Record<string, unknown>) => {
     closeModal()
     await loadProjects()
   } catch (error) {
-    errorMessage.value = error instanceof Error ? error.message : 'No se pudo guardar el proyecto.'
+    showToast(error instanceof Error ? error.message : 'No se pudo guardar el proyecto.', 'error')
   }
 }
 
@@ -97,7 +96,6 @@ onMounted(() => { void loadProjects() })
           Mostrar también proyectos inactivos
         </label>
       </div>
-      <section v-if="errorMessage" class="message error" role="alert">{{ errorMessage }}</section>
       <section v-if="successMessage" class="message success" role="status">{{ successMessage }}</section>
       <section v-if="loading" class="card state">Cargando proyectos...</section>
       <section v-else-if="projects.length === 0" class="card state">

@@ -4,6 +4,17 @@
  */
 import config from '@/config';
 
+export const getApiErrorMessages = (error: unknown, fallback = 'No se pudo completar la solicitud.'): string[] => {
+  if (!(error instanceof Error)) return [fallback]
+  try {
+    const parsed = JSON.parse(error.message)
+    if (Array.isArray(parsed)) return parsed.map(String)
+  } catch {
+    // El mensaje ya está normalizado por request().
+  }
+  return [error.message || fallback]
+}
+
 // Tipos
 interface LoginCredentials {
   username: string;
@@ -337,7 +348,7 @@ class ApiService {
         }
         
         if (allMessages.length > 0) {
-          throw new Error(JSON.stringify(allMessages));
+          throw new Error(allMessages.join('\n'));
         }
       }
 

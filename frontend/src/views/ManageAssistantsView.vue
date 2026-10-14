@@ -8,10 +8,12 @@ import ScheduleBuilder from '@/components/ScheduleBuilder.vue'
 import ErrorModal from '@/components/ErrorModal.vue'
 import { assistantFormFields } from '@/forms/assistantForm.schema'
 import { useAuth } from '@/composables/useAuth'
-import api, { type AssistantAdminDetail, type AssistantReport, type CoordinatorOption, type ProjectOption, type ScheduleBlockInput } from '@/services/api'
+import { useToast } from '@/composables/useToast'
+import api, { getApiErrorMessages, type AssistantAdminDetail, type AssistantReport, type CoordinatorOption, type ProjectOption, type ScheduleBlockInput } from '@/services/api'
 
 const router = useRouter()
 const { userRole, userName, userId, logout } = useAuth()
+const { showToast } = useToast()
 const showAssistantForm = ref(false)
 const showErrorModal = ref(false)
 const errorMessages = ref<string[]>([])
@@ -64,7 +66,6 @@ const reportEndDate = ref('')
 const reportTotalSeconds = ref(0)
 const editLoading = ref(false)
 const editSaving = ref(false)
-const editError = ref('')
 const editForm = reactive({
   username: '',
   full_name: '',
@@ -264,7 +265,6 @@ const deleteAssistant = async (assistant: AssistantRow) => {
 const openAssistantEditor = async (assistantId: number) => {
   showEditModal.value = true
   editLoading.value = true
-  editError.value = ''
   try {
     const detail = await api.getAssistantAdminDetail(assistantId)
     editingAssistant.value = detail
@@ -276,7 +276,7 @@ const openAssistantEditor = async (assistantId: number) => {
     editForm.weekly_hours = detail.weekly_hours
     editForm.schedule_blocks = detail.schedule_blocks.map((block) => ({ ...block }))
   } catch (error) {
-    editError.value = error instanceof Error ? error.message : 'No se pudo cargar la información del asistente.'
+    showToast(error instanceof Error ? error.message : 'No se pudo cargar la información del asistente.', 'error')
   } finally {
     editLoading.value = false
   }
@@ -442,7 +442,6 @@ const removeScheduleBlock = (index: number) => {
 const saveAssistantEditor = async () => {
   if (!editingAssistant.value) return
   editSaving.value = true
-  editError.value = ''
   try {
     await api.updateAssistantAdminDetail(editingAssistant.value.id, {
       username: editForm.username,
@@ -456,7 +455,7 @@ const saveAssistantEditor = async () => {
     await loadAssistants()
     closeAssistantEditor()
   } catch (error) {
-    editError.value = error instanceof Error ? error.message : 'No se pudo guardar el asistente.'
+    showToast(error instanceof Error ? error.message : 'No se pudo guardar el asistente.', 'error')
   } finally {
     editSaving.value = false
   }
@@ -577,21 +576,9 @@ const onConfirmAssistantForm = async (formData: Record<string, any>) => {
     showAssistantForm.value = false
     await loadAssistants()
   } catch (error) {
-    if (error instanceof Error) {
-      try {
-        const parsedMsgs = JSON.parse(error.message)
-        if (Array.isArray(parsedMsgs)) {
-          errorMessages.value = parsedMsgs
-        } else {
-          errorMessages.value = [error.message]
-        }
-      } catch {
-        errorMessages.value = [error.message]
-      }
-    } else {
-      errorMessages.value = ['Ocurrió un error desconocido al procesar la solicitud.']
-    }
-    showErrorModal.value = true
+    errorMessages.value = getApiErrorMessages(error, 'No se pudo crear el asistente.')
+    showToast(errorMessages.value.join(' '), 'error')
+    showErrorModal.value = false
   }
 }
 
@@ -725,7 +712,6 @@ onMounted(() => {
             <h2>Editar asistente</h2>
           </div>
           <p v-if="editLoading">Cargando información...</p>
-          <p v-if="editError" class="schedule-error">{{ editError }}</p>
           <form v-if="!editLoading" @submit.prevent="saveAssistantEditor">
             <div class="edit-grid">
               <label>Usuario <input v-model.trim="editForm.username" required /></label>

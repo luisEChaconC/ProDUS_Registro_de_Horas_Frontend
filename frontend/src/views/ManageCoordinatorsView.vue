@@ -5,14 +5,15 @@ import AppHeader from '@/components/AppHeader.vue'
 import GenericForm from '@/components/GenericForm.vue'
 import { coordinatorFormFields } from '@/forms/coordinatorForm.schema'
 import { useAuth } from '@/composables/useAuth'
+import { useToast } from '@/composables/useToast'
 import api, { type ProjectOption, type UserListItem } from '@/services/api'
 
 const router = useRouter()
 const { userName, userRole, userId, logout } = useAuth()
+const { showToast } = useToast()
 const coordinators = ref<UserListItem[]>([])
 const loading = ref(true)
 const saving = ref(false)
-const errorMessage = ref('')
 const successMessage = ref('')
 const showModal = ref(false)
 const editingCoordinator = ref<UserListItem | null>(null)
@@ -43,7 +44,6 @@ const resetForm = () => Object.assign(form, {
 
 const loadCoordinators = async () => {
   loading.value = true
-  errorMessage.value = ''
   try {
     const [coordinatorList, projectResponse] = await Promise.all([
       api.listCoordinators(),
@@ -53,7 +53,9 @@ const loadCoordinators = async () => {
     projects.value = projectResponse.results
     updateProjectOptions()
   }
-  catch (error) { errorMessage.value = error instanceof Error ? error.message : 'No se pudieron cargar los coordinadores.' }
+  catch (error) {
+    showToast(error instanceof Error ? error.message : 'No se pudieron cargar los coordinadores.', 'error')
+  }
   finally { loading.value = false }
 }
 
@@ -77,7 +79,7 @@ const openEdit = (coordinator: UserListItem) => {
 const closeModal = () => { showModal.value = false; editingCoordinator.value = null }
 
 const saveCoordinator = async () => {
-  saving.value = true; errorMessage.value = ''; successMessage.value = ''
+  saving.value = true; successMessage.value = ''
   try {
     if (editingCoordinator.value) {
       await api.updateCoordinator(editingCoordinator.value.id, {
@@ -89,7 +91,7 @@ const saveCoordinator = async () => {
       successMessage.value = 'Coordinador actualizado correctamente.'
     } else {
       if (!form.password || form.password !== form.password_confirm) {
-        errorMessage.value = 'Las contraseñas son obligatorias y deben coincidir.'
+        showToast('Las contraseñas son obligatorias y deben coincidir.', 'error')
         return
       }
       await api.createCoordinator({
@@ -102,7 +104,9 @@ const saveCoordinator = async () => {
       successMessage.value = 'Coordinador creado correctamente.'
     }
     closeModal(); await loadCoordinators()
-  } catch (error) { errorMessage.value = error instanceof Error ? error.message : 'No se pudo guardar el coordinador.' }
+  } catch (error) {
+    showToast(error instanceof Error ? error.message : 'No se pudo guardar el coordinador.', 'error')
+  }
   finally { saving.value = false }
 }
 
@@ -110,7 +114,9 @@ const deleteCoordinator = async (coordinator: UserListItem) => {
   if (userId.value === coordinator.id) { window.alert('No puedes eliminar tu propio usuario.'); return }
   if (!window.confirm(`¿Deseas eliminar al coordinador "${coordinator.username}"? Esta acción no se puede deshacer.`)) return
   try { await api.deleteUser(coordinator.id); successMessage.value = 'Coordinador eliminado correctamente.'; await loadCoordinators() }
-  catch (error) { errorMessage.value = error instanceof Error ? error.message : 'No se pudo eliminar el coordinador.' }
+  catch (error) {
+    showToast(error instanceof Error ? error.message : 'No se pudo eliminar el coordinador.', 'error')
+  }
 }
 
 const handleFormSubmit = async (values: Record<string, unknown>) => {
@@ -131,7 +137,6 @@ onMounted(() => { void loadCoordinators() })
         <div><p class="eyebrow">Administración</p><h2>Coordinadores del sistema</h2><p class="intro">Crea, edita o elimina usuarios con rol coordinador.</p></div>
         <button class="primary-button" type="button" @click="openCreate">Añadir coordinador</button>
       </div>
-      <section v-if="errorMessage" class="message error" role="alert">{{ errorMessage }}</section>
       <section v-if="successMessage" class="message success" role="status">{{ successMessage }}</section>
       <section v-if="loading" class="card state">Cargando coordinadores...</section>
       <section v-else-if="coordinators.length === 0" class="card state">No hay coordinadores registrados.</section>
