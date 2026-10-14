@@ -5,7 +5,7 @@ import AppHeader from '@/components/AppHeader.vue'
 import GenericForm from '@/components/GenericForm.vue'
 import { useAuth } from '@/composables/useAuth'
 import { useToast } from '@/composables/useToast'
-import api, { type ProjectAdminItem } from '@/services/api'
+import api, { ApiError, type ProjectAdminItem } from '@/services/api'
 
 const router = useRouter()
 const { userName, userRole, logout } = useAuth()
@@ -13,6 +13,7 @@ const { showToast } = useToast()
 const projects = ref<ProjectAdminItem[]>([])
 const loading = ref(true)
 const successMessage = ref('')
+const formErrors = ref<Record<string, string>>({})
 const showInactive = ref(false)
 const showModal = ref(false)
 const editingProject = ref<ProjectAdminItem | null>(null)
@@ -35,12 +36,14 @@ const loadProjects = async () => {
 }
 
 const openCreate = () => {
+  formErrors.value = {}
   editingProject.value = null
   formInitialValues.value = { name: '', is_active: true }
   showModal.value = true
 }
 
 const openEdit = (project: ProjectAdminItem) => {
+  formErrors.value = {}
   editingProject.value = project
   formInitialValues.value = { name: project.name, is_active: project.is_active }
   showModal.value = true
@@ -49,10 +52,12 @@ const openEdit = (project: ProjectAdminItem) => {
 const closeModal = () => {
   showModal.value = false
   editingProject.value = null
+  formErrors.value = {}
 }
 
 const saveProject = async (values: Record<string, unknown>) => {
   successMessage.value = ''
+  formErrors.value = {}
   try {
     const payload = { name: String(values.name || '').trim(), is_active: Boolean(values.is_active) }
     if (editingProject.value) {
@@ -65,6 +70,7 @@ const saveProject = async (values: Record<string, unknown>) => {
     closeModal()
     await loadProjects()
   } catch (error) {
+    formErrors.value = error instanceof ApiError ? error.fieldErrors : {}
     showToast(error instanceof Error ? error.message : 'No se pudo guardar el proyecto.', 'error')
   }
 }
@@ -122,6 +128,7 @@ onMounted(() => { void loadProjects() })
             :title="editingProject ? 'Editar proyecto' : 'Nuevo proyecto'"
             :fields="projectFields"
             :initial-values="formInitialValues"
+            :external-errors="formErrors"
             confirm-text="Guardar"
             cancel-text="Cancelar"
             @confirm="saveProject"

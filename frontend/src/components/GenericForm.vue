@@ -30,9 +30,11 @@ const props = withDefaults(defineProps<{
   confirmText?: string
   cancelText?: string
   initialValues?: Record<string, unknown>
+  externalErrors?: Record<string, string>
 }>(), {
   confirmText: 'Confirmar',
-  cancelText: 'Cancelar'
+  cancelText: 'Cancelar',
+  externalErrors: () => ({})
 })
 
 const emit = defineEmits<{
@@ -75,6 +77,17 @@ watch(
   () => props.fields,
   () => initializeForm(),
   { immediate: true, deep: true }
+)
+
+watch(
+  () => props.externalErrors,
+  (externalErrors) => {
+    Object.keys(externalErrors || {}).forEach((key) => {
+      const message = externalErrors[key]
+      if (message) errors[key] = message
+    })
+  },
+  { deep: true, immediate: true }
 )
 
 const getFieldClasses = (field: GenericFormField): string[] => {
@@ -171,7 +184,7 @@ const getPasswordInputType = (fieldName: string): string => {
           v-if="field.type === 'textarea'"
           :id="field.name"
           v-model="formData[field.name]"
-          class="field-input field-textarea"
+          :class="['field-input', 'field-textarea', { 'field-input-error': errors[field.name] }]"
           :placeholder="field.placeholder || ''"
           :disabled="field.disabled"
           rows="3"
@@ -181,7 +194,7 @@ const getPasswordInputType = (fieldName: string): string => {
           v-else-if="field.type === 'select'"
           :id="field.name"
           v-model="formData[field.name]"
-          class="field-input"
+          :class="['field-input', { 'field-input-error': errors[field.name] }]"
           :disabled="field.disabled"
           :multiple="field.multiple"
         >
@@ -199,7 +212,7 @@ const getPasswordInputType = (fieldName: string): string => {
           <input
             :id="field.name"
             v-model="formData[field.name]"
-            class="field-input"
+            :class="['field-input', { 'field-input-error': errors[field.name] }]"
             :type="getPasswordInputType(field.name)"
             :placeholder="field.placeholder || ''"
             :disabled="field.disabled"
@@ -228,7 +241,7 @@ const getPasswordInputType = (fieldName: string): string => {
           v-else
           :id="field.name"
           v-model="formData[field.name]"
-          class="field-input"
+          :class="['field-input', { 'field-input-error': errors[field.name] }]"
           :type="field.type || 'text'"
           :placeholder="field.placeholder || ''"
           :disabled="field.disabled"
@@ -366,6 +379,11 @@ password-field-wrapper {
   outline: none;
   border-color: var(--color-primary);
   box-shadow: var(--shadow-focus-primary);
+}
+
+.field-input-error {
+  border-color: var(--color-error-dark);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-error) 20%, transparent);
 }
 
 .field-textarea {

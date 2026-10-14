@@ -6,7 +6,7 @@ import GenericForm from '@/components/GenericForm.vue'
 import { coordinatorFormFields } from '@/forms/coordinatorForm.schema'
 import { useAuth } from '@/composables/useAuth'
 import { useToast } from '@/composables/useToast'
-import api, { type ProjectOption, type UserListItem } from '@/services/api'
+import api, { ApiError, type ProjectOption, type UserListItem } from '@/services/api'
 
 const router = useRouter()
 const { userName, userRole, userId, logout } = useAuth()
@@ -15,6 +15,7 @@ const coordinators = ref<UserListItem[]>([])
 const loading = ref(true)
 const saving = ref(false)
 const successMessage = ref('')
+const formErrors = ref<Record<string, string>>({})
 const showModal = ref(false)
 const editingCoordinator = ref<UserListItem | null>(null)
 const form = reactive({ username: '', full_name: '', password: '', password_confirm: '', is_active: true, project_ids: [] as number[] })
@@ -60,12 +61,14 @@ const loadCoordinators = async () => {
 }
 
 const openCreate = () => {
+  formErrors.value = {}
   resetForm()
   editingCoordinator.value = null
   formInitialValues.value = { is_active: true, project_ids: [] }
   showModal.value = true
 }
 const openEdit = (coordinator: UserListItem) => {
+  formErrors.value = {}
   editingCoordinator.value = coordinator
   Object.assign(form, { username: coordinator.username, full_name: coordinator.full_name, is_active: coordinator.is_active, password: '', password_confirm: '' })
   formInitialValues.value = {
@@ -76,10 +79,11 @@ const openEdit = (coordinator: UserListItem) => {
   }
   showModal.value = true
 }
-const closeModal = () => { showModal.value = false; editingCoordinator.value = null }
+const closeModal = () => { showModal.value = false; editingCoordinator.value = null; formErrors.value = {} }
 
 const saveCoordinator = async () => {
   saving.value = true; successMessage.value = ''
+  formErrors.value = {}
   try {
     if (editingCoordinator.value) {
       await api.updateCoordinator(editingCoordinator.value.id, {
@@ -91,6 +95,7 @@ const saveCoordinator = async () => {
       successMessage.value = 'Coordinador actualizado correctamente.'
     } else {
       if (!form.password || form.password !== form.password_confirm) {
+        formErrors.value = { password: 'Las contraseñas son obligatorias y deben coincidir.', password_confirm: 'Las contraseñas son obligatorias y deben coincidir.' }
         showToast('Las contraseñas son obligatorias y deben coincidir.', 'error')
         return
       }
@@ -105,6 +110,7 @@ const saveCoordinator = async () => {
     }
     closeModal(); await loadCoordinators()
   } catch (error) {
+    formErrors.value = error instanceof ApiError ? error.fieldErrors : {}
     showToast(error instanceof Error ? error.message : 'No se pudo guardar el coordinador.', 'error')
   }
   finally { saving.value = false }
@@ -155,6 +161,7 @@ onMounted(() => { void loadCoordinators() })
           :title="editingCoordinator ? 'Editar coordinador' : 'Nuevo coordinador'"
           :fields="visibleCoordinatorFields"
           :initial-values="formInitialValues"
+          :external-errors="formErrors"
           confirm-text="Guardar"
           cancel-text="Cancelar"
           @confirm="handleFormSubmit"

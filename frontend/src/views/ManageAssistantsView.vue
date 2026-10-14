@@ -9,7 +9,7 @@ import ErrorModal from '@/components/ErrorModal.vue'
 import { assistantFormFields } from '@/forms/assistantForm.schema'
 import { useAuth } from '@/composables/useAuth'
 import { useToast } from '@/composables/useToast'
-import api, { getApiErrorMessages, type AssistantAdminDetail, type AssistantReport, type CoordinatorOption, type ProjectOption, type ScheduleBlockInput } from '@/services/api'
+import api, { ApiError, getApiErrorMessages, type AssistantAdminDetail, type AssistantReport, type CoordinatorOption, type ProjectOption, type ScheduleBlockInput } from '@/services/api'
 
 const router = useRouter()
 const { userRole, userName, userId, logout } = useAuth()
@@ -17,6 +17,7 @@ const { showToast } = useToast()
 const showAssistantForm = ref(false)
 const showErrorModal = ref(false)
 const errorMessages = ref<string[]>([])
+const assistantFormErrors = ref<Record<string, string>>({})
 const showScheduleModal = ref(false)
 const scheduleValidationError = ref('')
 const scheduleModalError = ref('')
@@ -66,6 +67,7 @@ const reportEndDate = ref('')
 const reportTotalSeconds = ref(0)
 const editLoading = ref(false)
 const editSaving = ref(false)
+const editFieldErrors = ref<Record<string, string>>({})
 const editForm = reactive({
   username: '',
   full_name: '',
@@ -75,6 +77,8 @@ const editForm = reactive({
   weekly_hours: 10,
   schedule_blocks: [] as ScheduleBlockInput[],
 })
+
+const hasEditFieldError = (field: string) => Boolean(editFieldErrors.value[field])
 
 const getScheduleBlocks = (storageKey: string): unknown[] => {
   const rawValue = localStorage.getItem(storageKey)
@@ -263,6 +267,7 @@ const deleteAssistant = async (assistant: AssistantRow) => {
 const openAssistantEditor = async (assistantId: number) => {
   showEditModal.value = true
   editLoading.value = true
+  editFieldErrors.value = {}
   try {
     const detail = await api.getAssistantAdminDetail(assistantId)
     editingAssistant.value = detail
@@ -274,6 +279,7 @@ const openAssistantEditor = async (assistantId: number) => {
     editForm.weekly_hours = detail.weekly_hours
     editForm.schedule_blocks = detail.schedule_blocks.map((block) => ({ ...block }))
   } catch (error) {
+    editFieldErrors.value = error instanceof ApiError ? error.fieldErrors : {}
     showToast(error instanceof Error ? error.message : 'No se pudo cargar la información del asistente.', 'error')
   } finally {
     editLoading.value = false
@@ -440,6 +446,7 @@ const removeScheduleBlock = (index: number) => {
 const saveAssistantEditor = async () => {
   if (!editingAssistant.value) return
   editSaving.value = true
+  editFieldErrors.value = {}
   try {
     await api.updateAssistantAdminDetail(editingAssistant.value.id, {
       username: editForm.username,
@@ -453,6 +460,7 @@ const saveAssistantEditor = async () => {
     await loadAssistants()
     closeAssistantEditor()
   } catch (error) {
+    editFieldErrors.value = error instanceof ApiError ? error.fieldErrors : {}
     showToast(error instanceof Error ? error.message : 'No se pudo guardar el asistente.', 'error')
   } finally {
     editSaving.value = false
@@ -533,6 +541,7 @@ onUnmounted(() => {
 })
 
 const onConfirmAssistantForm = async (formData: Record<string, any>) => {
+  assistantFormErrors.value = {}
   if (!isScheduleConfirmed.value) {
     scheduleValidationError.value = 'Debes configurar y confirmar el horario inicial antes de guardar.'
     return
@@ -574,6 +583,7 @@ const onConfirmAssistantForm = async (formData: Record<string, any>) => {
     showAssistantForm.value = false
     await loadAssistants()
   } catch (error) {
+    assistantFormErrors.value = error instanceof ApiError ? error.fieldErrors : {}
     errorMessages.value = getApiErrorMessages(error, 'No se pudo crear el asistente.')
     showToast(errorMessages.value.join(' '), 'error')
     showErrorModal.value = false
@@ -665,6 +675,7 @@ onMounted(() => {
             :fields="assistantFormFields"
             confirm-text="Confirmar"
             cancel-text="Cancelar"
+            :external-errors="assistantFormErrors"
             @confirm="onConfirmAssistantForm"
             @cancel="onCancelAssistantForm"
           >
@@ -712,17 +723,17 @@ onMounted(() => {
           <p v-if="editLoading">Cargando información...</p>
           <form v-if="!editLoading" @submit.prevent="saveAssistantEditor">
             <div class="edit-grid">
-              <label>Usuario <input v-model.trim="editForm.username" required /></label>
-              <label>Nombre completo <input v-model.trim="editForm.full_name" required /></label>
+              <label>Usuario <input v-model.trim="editForm.username" :class="{ 'edit-field-error': hasEditFieldError('username') }" required /></label>
+              <label>Nombre completo <input v-model.trim="editForm.full_name" :class="{ 'edit-field-error': hasEditFieldError('full_name') }" required /></label>
               <label>Estado
                 <select v-model="editForm.is_active">
                   <option :value="true">Activo</option>
                   <option :value="false">Inactivo</option>
                 </select>
               </label>
-              <label>Horas semanales <input v-model.number="editForm.weekly_hours" type="number" min="1" required /></label>
-              <label>Fecha de inicio <input v-model="editForm.start_date" type="date" required /></label>
-              <label>Fecha de finalización <input v-model="editForm.end_date" type="date" /></label>
+              <label>Horas semanales <input v-model.number="editForm.weekly_hours" :class="{ 'edit-field-error': hasEditFieldError('weekly_hours') }" type="number" min="1" required /></label>
+              <label>Fecha de inicio <input v-model="editForm.start_date" :class="{ 'edit-field-error': hasEditFieldError('start_date') }" type="date" required /></label>
+              <label>Fecha de finalización <input v-model="editForm.end_date" :class="{ 'edit-field-error': hasEditFieldError('end_date') }" type="date" /></label>
             </div>
 
             <h3>Horario</h3>
@@ -1008,6 +1019,11 @@ th { background: #f8fafc; color: #003d7a; }
   margin: 0;
   color: var(--color-error-dark);
   font-weight: 600;
+}
+
+.edit-field-error {
+  border-color: var(--color-error-dark);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-error) 20%, transparent);
 }
 
 .schedule-modal-overlay {

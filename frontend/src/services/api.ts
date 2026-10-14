@@ -4,6 +4,16 @@
  */
 import config from '@/config';
 
+export class ApiError extends Error {
+  fieldErrors: Record<string, string>
+
+  constructor(message: string, fieldErrors: Record<string, string> = {}) {
+    super(message)
+    this.name = 'ApiError'
+    this.fieldErrors = fieldErrors
+  }
+}
+
 export const getApiErrorMessages = (error: unknown, fallback = 'No se pudo completar la solicitud.'): string[] => {
   if (!(error instanceof Error)) return [fallback]
   try {
@@ -339,16 +349,20 @@ class ApiService {
       if (typeof errorData === 'object' && !errorData.detail && !errorData.message) {
         // Extraemos los mensajes de las llaves del objeto JSON
         const allMessages: string[] = [];
+        const fieldErrors: Record<string, string> = {};
         for (const key in errorData) {
           if (Array.isArray(errorData[key])) {
-            allMessages.push(...errorData[key]);
+            const message = errorData[key].map(String).join(' ');
+            allMessages.push(message);
+            fieldErrors[key] = message;
           } else if (typeof errorData[key] === 'string') {
             allMessages.push(errorData[key]);
+            fieldErrors[key] = errorData[key];
           }
         }
         
         if (allMessages.length > 0) {
-          throw new Error(allMessages.join('\n'));
+          throw new ApiError(allMessages.join('\n'), fieldErrors);
         }
       }
 
