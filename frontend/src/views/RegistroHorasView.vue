@@ -63,7 +63,6 @@
         </form>
       </section>
       <p v-if="errorMessage" class="error-message" role="alert">{{ errorMessage }}</p>
-      <p v-if="successMessage" class="success-message" role="status">{{ successMessage }}</p>
     </main>
   </div>
 </template>
@@ -74,10 +73,12 @@ import { useRouter } from 'vue-router'
 import AppHeader from '@/components/AppHeader.vue'
 import { useAuth } from '@/composables/useAuth'
 import { ROLES } from '@/config/roles'
+import { useToast } from '@/composables/useToast'
 import api, { type CoordinatorOption, type ProjectOption, type TimeLogSession } from '@/services/api'
 
 const router = useRouter()
 const { userRole, userName, logout } = useAuth()
+const { showToast } = useToast()
 const loading = ref(true)
 const actionLoading = ref(false)
 const activeSession = ref(false)
@@ -86,7 +87,6 @@ const elapsedSeconds = ref(0)
 const projects = ref<ProjectOption[]>([])
 const coordinators = ref<CoordinatorOption[]>([])
 const errorMessage = ref('')
-const successMessage = ref('')
 const closeForm = reactive({
   project_id: '' as number | '',
   manager_user_id: '' as number | '',
@@ -147,14 +147,13 @@ async function loadOptions() {
 async function startSession() {
   actionLoading.value = true
   errorMessage.value = ''
-  successMessage.value = ''
   try {
     const response = await api.startWorkSession()
     activeSession.value = true
     session.value = response.session
     elapsedSeconds.value = response.session.elapsed_seconds
     startTimer()
-    successMessage.value = 'Jornada iniciada correctamente.'
+    showToast('Jornada iniciada correctamente.', 'success')
   } catch (error) {
     showError(error)
   } finally {
@@ -165,7 +164,6 @@ async function startSession() {
 async function closeSession() {
   actionLoading.value = true
   errorMessage.value = ''
-  successMessage.value = ''
   try {
     await api.closeWorkSession({
       project_id: closeForm.project_id === '' ? null : closeForm.project_id,
@@ -178,7 +176,7 @@ async function closeSession() {
     session.value = null
     elapsedSeconds.value = 0
     if (timer) clearInterval(timer)
-    successMessage.value = 'Jornada finalizada y guardada correctamente.'
+    showToast('Jornada finalizada y guardada correctamente.', 'success')
     closeForm.project_id = ''
     closeForm.manager_user_id = ''
     closeForm.notes = ''

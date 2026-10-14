@@ -55,7 +55,6 @@
           </tbody>
         </table>
       </section>
-      <section v-if="successMessage" class="message success" role="status">{{ successMessage }}</section>
       <div v-if="editingUser" class="modal-overlay">
         <section class="edit-card edit-modal" role="dialog" aria-modal="true" aria-labelledby="edit-user-title">
           <div class="modal-heading">
@@ -98,14 +97,15 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AppHeader from '@/components/AppHeader.vue'
 import { useAuth } from '@/composables/useAuth'
+import { useToast } from '@/composables/useToast'
 import api, { type UserListItem } from '@/services/api'
 
 const router = useRouter()
 const { userName, userRole, userId, logout } = useAuth()
+const { showToast } = useToast()
 const users = ref<UserListItem[]>([])
 const loading = ref(true)
 const errorMessage = ref('')
-const successMessage = ref('')
 const editingUser = ref<UserListItem | null>(null)
 const saving = ref(false)
 const editForm = reactive({ username: '', full_name: '', role: 'asistente', is_active: true })
@@ -125,7 +125,6 @@ const formatDate = (value: string) => {
 const loadUsers = async () => {
   loading.value = true
   errorMessage.value = ''
-  successMessage.value = ''
   try {
     users.value = await api.listUsers()
   } catch (error) {
@@ -151,13 +150,11 @@ const saveEdit = async () => {
   if (!editingUser.value) return
   saving.value = true
   errorMessage.value = ''
-  successMessage.value = ''
   try {
     await api.updateUser(editingUser.value.id, editForm)
     closeEdit()
-    successMessage.value = 'Usuario actualizado correctamente.'
+    showToast('Usuario actualizado correctamente.', 'success')
     await loadUsers()
-    successMessage.value = 'Usuario actualizado correctamente.'
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : 'No se pudo actualizar el usuario.'
   } finally {
@@ -174,11 +171,10 @@ const deleteUser = async (user: UserListItem) => {
   if (!confirmed) return
 
   errorMessage.value = ''
-  successMessage.value = ''
   try {
     await api.deleteUser(user.id)
     await loadUsers()
-    successMessage.value = 'Usuario eliminado correctamente.'
+    showToast('Usuario eliminado correctamente.', 'success')
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : 'No se pudo eliminar el usuario.'
   }

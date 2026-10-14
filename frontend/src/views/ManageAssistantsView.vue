@@ -459,6 +459,7 @@ const saveAssistantEditor = async () => {
     })
     await loadAssistants()
     closeAssistantEditor()
+    showToast('Asistente actualizado correctamente.', 'success')
   } catch (error) {
     editFieldErrors.value = error instanceof ApiError ? error.fieldErrors : {}
     showToast(error instanceof Error ? error.message : 'No se pudo guardar el asistente.', 'error')
@@ -582,6 +583,7 @@ const onConfirmAssistantForm = async (formData: Record<string, any>) => {
     showScheduleModal.value = false
     showAssistantForm.value = false
     await loadAssistants()
+    showToast('Asistente creado correctamente.', 'success')
   } catch (error) {
     assistantFormErrors.value = error instanceof ApiError ? error.fieldErrors : {}
     errorMessages.value = getApiErrorMessages(error, 'No se pudo crear el asistente.')

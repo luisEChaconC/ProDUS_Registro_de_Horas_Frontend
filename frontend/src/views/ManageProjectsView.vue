@@ -12,7 +12,6 @@ const { userName, userRole, logout } = useAuth()
 const { showToast } = useToast()
 const projects = ref<ProjectAdminItem[]>([])
 const loading = ref(true)
-const successMessage = ref('')
 const formErrors = ref<Record<string, string>>({})
 const showInactive = ref(false)
 const showModal = ref(false)
@@ -56,16 +55,15 @@ const closeModal = () => {
 }
 
 const saveProject = async (values: Record<string, unknown>) => {
-  successMessage.value = ''
   formErrors.value = {}
   try {
     const payload = { name: String(values.name || '').trim(), is_active: Boolean(values.is_active) }
     if (editingProject.value) {
       await api.updateProject(editingProject.value.id, payload)
-      successMessage.value = 'Proyecto actualizado correctamente.'
+      showToast('Proyecto actualizado correctamente.', 'success')
     } else {
       await api.createProject(payload)
-      successMessage.value = 'Proyecto creado correctamente.'
+      showToast('Proyecto creado correctamente.', 'success')
     }
     closeModal()
     await loadProjects()
@@ -102,7 +100,6 @@ onMounted(() => { void loadProjects() })
           Mostrar también proyectos inactivos
         </label>
       </div>
-      <section v-if="successMessage" class="message success" role="status">{{ successMessage }}</section>
       <section v-if="loading" class="card state">Cargando proyectos...</section>
       <section v-else-if="projects.length === 0" class="card state">
         {{ showInactive ? 'No hay proyectos registrados.' : 'No hay proyectos activos.' }}

@@ -14,7 +14,6 @@ const { showToast } = useToast()
 const coordinators = ref<UserListItem[]>([])
 const loading = ref(true)
 const saving = ref(false)
-const successMessage = ref('')
 const formErrors = ref<Record<string, string>>({})
 const showModal = ref(false)
 const editingCoordinator = ref<UserListItem | null>(null)
@@ -82,7 +81,7 @@ const openEdit = (coordinator: UserListItem) => {
 const closeModal = () => { showModal.value = false; editingCoordinator.value = null; formErrors.value = {} }
 
 const saveCoordinator = async () => {
-  saving.value = true; successMessage.value = ''
+  saving.value = true
   formErrors.value = {}
   try {
     if (editingCoordinator.value) {
@@ -92,7 +91,7 @@ const saveCoordinator = async () => {
         is_active: form.is_active,
         project_ids: form.project_ids,
       })
-      successMessage.value = 'Coordinador actualizado correctamente.'
+      showToast('Coordinador actualizado correctamente.', 'success')
     } else {
       if (!form.password || form.password !== form.password_confirm) {
         formErrors.value = { password: 'Las contraseñas son obligatorias y deben coincidir.', password_confirm: 'Las contraseñas son obligatorias y deben coincidir.' }
@@ -106,7 +105,7 @@ const saveCoordinator = async () => {
         password_confirm: form.password_confirm,
         project_ids: form.project_ids,
       })
-      successMessage.value = 'Coordinador creado correctamente.'
+      showToast('Coordinador creado correctamente.', 'success')
     }
     closeModal(); await loadCoordinators()
   } catch (error) {
@@ -119,7 +118,7 @@ const saveCoordinator = async () => {
 const deleteCoordinator = async (coordinator: UserListItem) => {
   if (userId.value === coordinator.id) { window.alert('No puedes eliminar tu propio usuario.'); return }
   if (!window.confirm(`¿Deseas eliminar al coordinador "${coordinator.username}"? Esta acción no se puede deshacer.`)) return
-  try { await api.deleteUser(coordinator.id); successMessage.value = 'Coordinador eliminado correctamente.'; await loadCoordinators() }
+  try { await api.deleteUser(coordinator.id); showToast('Coordinador eliminado correctamente.', 'success'); await loadCoordinators() }
   catch (error) {
     showToast(error instanceof Error ? error.message : 'No se pudo eliminar el coordinador.', 'error')
   }
@@ -143,7 +142,6 @@ onMounted(() => { void loadCoordinators() })
         <div><p class="eyebrow">Administración</p><h2>Coordinadores del sistema</h2><p class="intro">Crea, edita o elimina usuarios con rol coordinador.</p></div>
         <button class="primary-button" type="button" @click="openCreate">Añadir coordinador</button>
       </div>
-      <section v-if="successMessage" class="message success" role="status">{{ successMessage }}</section>
       <section v-if="loading" class="card state">Cargando coordinadores...</section>
       <section v-else-if="coordinators.length === 0" class="card state">No hay coordinadores registrados.</section>
       <section v-else class="card table-wrapper">
