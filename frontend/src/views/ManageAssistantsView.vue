@@ -47,6 +47,18 @@ const reportSaving = ref(false)
 const reportProjects = ref<ProjectOption[]>([])
 const reportManagers = ref<CoordinatorOption[]>([])
 const selectedReport = ref<AssistantReport | null>(null)
+const addingReportAssistantId = ref<number | null>(null)
+const showCreateReportForm = ref(false)
+const newReport = reactive({
+  check_in: '',
+  check_out: '',
+  project_id: null as number | null,
+  manager_user_id: null as number | null,
+  break_minutes: 0,
+  activities: '',
+  work_description: '',
+  notes: '',
+})
 const reportStartDate = ref('')
 const reportEndDate = ref('')
 const reportTotalSeconds = ref(0)
@@ -285,6 +297,55 @@ const openAssistantReports = async (assistantId: number) => {
   await loadAssistantReports(assistantId)
 }
 
+const getCurrentDateTimeInput = () => {
+  const date = new Date()
+  const pad = (part: number) => String(part).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
+const addAssistantReport = async (assistant: AssistantRow) => {
+  reportsError.value = ''
+  reportSuccess.value = ''
+  newReport.check_in = getCurrentDateTimeInput()
+  newReport.check_out = getCurrentDateTimeInput()
+  newReport.project_id = null
+  newReport.manager_user_id = null
+  newReport.break_minutes = 0
+  newReport.activities = ''
+  newReport.work_description = ''
+  newReport.notes = ''
+  await openAssistantReports(assistant.id)
+  showCreateReportForm.value = true
+}
+
+const createAssistantReport = async () => {
+  if (!reportsAssistant.value) return
+  addingReportAssistantId.value = reportsAssistant.value.id
+  reportsError.value = ''
+  reportSuccess.value = ''
+  try {
+    await api.createAssistantReport(reportsAssistant.value.id, {
+      check_in: toApiDateTime(newReport.check_in),
+      check_out: newReport.check_out ? toApiDateTime(newReport.check_out) : null,
+      project_id: newReport.project_id,
+      manager_user_id: newReport.manager_user_id,
+      break_minutes: newReport.break_minutes,
+      activities: newReport.activities,
+      work_description: newReport.work_description,
+      notes: newReport.notes,
+    })
+    showCreateReportForm.value = false
+    await loadAssistantReports(reportsAssistant.value.id)
+    showReportToast('Reporte creado correctamente.', 'success')
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'No se pudo crear el reporte.'
+    reportsError.value = message
+    showReportToast(message, 'error')
+  } finally {
+    addingReportAssistantId.value = null
+  }
+}
+
 const loadAssistantReports = async (assistantId = reportsAssistant.value?.id) => {
   if (reportsScope.value === 'assistant' && !assistantId) return
   reportsLoading.value = true
@@ -346,6 +407,7 @@ const consultAssistantReports = () => {
 
 const closeAssistantReports = () => {
   showReportsModal.value = false
+  showCreateReportForm.value = false
   reportsAssistant.value = null
   assistantReports.value = []
   reportProjects.value = []
@@ -596,6 +658,14 @@ onMounted(() => {
               <td class="actions">
                 <button class="edit-button" type="button" @click="openAssistantEditor(assistant.id)">Editar</button>
                 <button class="reports-button" type="button" @click="openAssistantReports(assistant.id)">Ver reportes</button>
+                <button
+                  class="add-report-button"
+                  type="button"
+                  :disabled="addingReportAssistantId === assistant.id"
+                  @click="addAssistantReport(assistant)"
+                >
+                  {{ addingReportAssistantId === assistant.id ? 'Creando...' : 'Agregar reporte' }}
+                </button>
                 <button class="delete-button" type="button" @click="deleteAssistant(assistant)">Borrar</button>
               </td>
             </tr>
@@ -699,25 +769,72 @@ onMounted(() => {
           <div class="modal-heading">
             <h2>{{ reportsScope === 'all' ? 'Reportes de todos los asistentes' : `Reportes de ${reportsAssistant?.name || 'asistente'}` }}</h2>
           </div>
-          <div class="report-filters">
-            <label>Desde <input v-model="reportStartDate" type="date" /></label>
-            <label>Hasta <input v-model="reportEndDate" type="date" /></label>
-            <button type="button" class="save-button" :disabled="reportsLoading" @click="consultAssistantReports">
-              {{ reportsLoading ? 'Consultando...' : 'Consultar' }}
-            </button>
-            <button type="button" class="secondary-button" :disabled="reportsLoading || !assistantReports.length" @click="exportReports">
-              Exportar CSV
-            </button>
-          </div>
-          <section v-if="reportsScope === 'assistant'" class="report-total">
-            Total de horas registradas en el periodo seleccionado:
-            <strong>{{ formatDuration(reportTotalSeconds) }}</strong>
-          </section>
-          <p v-if="reportsLoading">Cargando reportes...</p>
-          <p v-if="!reportsLoading && !reportsError && !assistantReports.length">
-            Este asistente no tiene reportes.
-          </p>
-          <div v-if="!selectedReport" class="report-preview-list">
+          <template v-if="!showCreateReportForm">
+            <div class="report-filters">
+              <label>Desde <input v-model="reportStartDate" type="date" /></label>
+              <label>Hasta <input v-model="reportEndDate" type="date" /></label>
+              <button type="button" class="save-button" :disabled="reportsLoading" @click="consultAssistantReports">
+                {{ reportsLoading ? 'Consultando...' : 'Consultar' }}
+              </button>
+              <button type="button" class="secondary-button" :disabled="reportsLoading || !assistantReports.length" @click="exportReports">
+                Exportar CSV
+              </button>
+            </div>
+            <section v-if="reportsScope === 'assistant'" class="report-total">
+              Total de horas registradas en el periodo seleccionado:
+              <strong>{{ formatDuration(reportTotalSeconds) }}</strong>
+            </section>
+            <p v-if="reportsLoading">Cargando reportes...</p>
+            <p v-if="!reportsLoading && !reportsError && !assistantReports.length">
+              Este asistente no tiene reportes.
+            </p>
+          </template>
+          <form v-if="showCreateReportForm" class="report-editor" @submit.prevent="createAssistantReport">
+            <div class="report-summary">
+              <strong>Nuevo reporte para {{ reportsAssistant?.name || 'asistente' }}</strong>
+            </div>
+            <div class="report-details-grid">
+              <label>Fecha y hora de inicio
+                <input v-model="newReport.check_in" type="datetime-local" required />
+              </label>
+              <label>Fecha y hora de finalización
+                <input v-model="newReport.check_out" type="datetime-local" />
+              </label>
+              <label>Proyecto
+                <select v-model="newReport.project_id">
+                  <option :value="null">Sin proyecto</option>
+                  <option v-for="project in reportProjects" :key="project.id" :value="project.id">{{ project.name }}</option>
+                </select>
+              </label>
+              <label>Encargado
+                <select v-model="newReport.manager_user_id">
+                  <option :value="null">Sin encargado</option>
+                  <option v-for="manager in reportManagers" :key="manager.id" :value="manager.id">
+                    {{ manager.full_name || manager.username }}
+                  </option>
+                </select>
+              </label>
+              <label>Minutos de almuerzo
+                <input v-model.number="newReport.break_minutes" type="number" min="0" required />
+              </label>
+              <label class="full-width">Actividades realizadas
+                <textarea v-model="newReport.activities" rows="3"></textarea>
+              </label>
+              <label class="full-width">Descripción del trabajo
+                <textarea v-model="newReport.work_description" rows="3"></textarea>
+              </label>
+              <label class="full-width">Notas
+                <textarea v-model="newReport.notes" rows="3"></textarea>
+              </label>
+            </div>
+            <div class="report-detail-actions">
+              <button type="button" class="secondary-button" @click="showCreateReportForm = false">Cancelar</button>
+              <button type="submit" class="save-button" :disabled="addingReportAssistantId !== null">
+                {{ addingReportAssistantId !== null ? 'Creando...' : 'Crear reporte' }}
+              </button>
+            </div>
+          </form>
+          <div v-else-if="!selectedReport" class="report-preview-list">
             <div
               v-for="report in assistantReports"
               :key="report.id"
@@ -884,7 +1001,9 @@ th { background: #f8fafc; color: #003d7a; }
   font: inherit;
   font-weight: 600;
 }
-.edit-button, .reports-button { background: #0052a3; color: #fff; }
+.edit-button, .reports-button, .add-report-button { background: #0052a3; color: #fff; }
+.add-report-button { background: #0f766e; }
+.actions button:disabled { opacity: .65; cursor: wait; }
 .actions .delete-button { background: #dc2626; color: #fff; }
 
 .schedule-action-row {

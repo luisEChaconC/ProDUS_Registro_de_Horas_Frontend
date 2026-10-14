@@ -535,6 +535,17 @@ class ApiService {
     return { results: response.results, total_seconds: response.total_seconds };
   }
 
+  async createAssistantReport(
+    id: number,
+    report: Partial<AssistantReport>,
+  ): Promise<AssistantReport> {
+    const response = await this.post<{ ok: boolean; report: AssistantReport }>(
+      `/timelogs/admin/assistants/${id}/reports/`,
+      report,
+    );
+    return response.report;
+  }
+
   async updateAssistantReport(id: number, report: Partial<AssistantReport> & { id: number }): Promise<AssistantReport> {
     const response = await this.patch<{ ok: boolean; report: AssistantReport }>(
       `/timelogs/admin/assistants/${id}/reports/`,
