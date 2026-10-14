@@ -36,7 +36,6 @@
           <div><strong>Fecha y hora de inicio</strong><span>{{ formatDate(selectedReport.check_in) }}</span></div>
           <div><strong>Fecha y hora de finalización</strong><span>{{ formatDate(selectedReport.check_out) }}</span></div>
           <div><strong>Horas contabilizadas</strong><span>{{ formatDuration(getWorkedSeconds(selectedReport)) }}</span></div>
-          <div><strong>Estado</strong><span>{{ selectedReport.status_code }}</span></div>
           <div><strong>Proyecto</strong><span>{{ selectedReport.project_name || 'Sin proyecto' }}</span></div>
           <div><strong>Encargado</strong><span>{{ selectedReport.manager_name || 'Sin encargado' }}</span></div>
           <div><strong>Minutos de almuerzo</strong><span>{{ selectedReport.break_minutes }}</span></div>
@@ -92,7 +91,6 @@ function exportReports() {
     'Inicio',
     'Finalización',
     'Horas contabilizadas',
-    'Estado',
     'Proyecto',
     'Encargado',
     'Minutos de almuerzo',

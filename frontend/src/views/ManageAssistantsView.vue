@@ -119,7 +119,6 @@ const exportReports = () => {
     'Inicio',
     'Finalización',
     'Horas contabilizadas',
-    'Estado',
     'Proyecto',
     'Encargado',
     'Minutos de almuerzo',
@@ -132,7 +131,6 @@ const exportReports = () => {
     formatReportDate(report.check_in),
     formatReportDate(report.check_out),
     formatDuration(getWorkedSeconds(report)),
-    report.status_code,
     report.project_name || 'Sin proyecto',
     report.manager_name || 'Sin encargado',
     report.break_minutes,
@@ -848,9 +846,6 @@ onMounted(() => {
               </label>
               <label>Fecha y hora de finalización
                 <input v-model="selectedReport.check_out" type="datetime-local" />
-              </label>
-              <label>Estado
-                <input :value="selectedReport.status_code" readonly />
               </label>
               <label>Proyecto
                 <select v-model="selectedReport.project_id">
