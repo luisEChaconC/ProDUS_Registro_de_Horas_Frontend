@@ -6,7 +6,6 @@ import BlockedView from "../views/BlockedView.vue";
 import ManageAssistantsView from "../views/ManageAssistantsView.vue";
 import HorariosView from "../views/HorariosView.vue";
 import ReportesView from "../views/ReportesView.vue";
-import ManageUsersView from "../views/ManageUsersView.vue";
 import ManageManagersView from "../views/ManageCoordinatorsView.vue";
 import ManageProjectsView from "../views/ManageProjectsView.vue";
 
@@ -120,12 +119,6 @@ const router = createRouter({
       name: "reportes",
       component: ReportesView,
       meta: { requiresAuth: true },
-    },
-    {
-      path: "/usuarios",
-      name: "manage-users",
-      component: ManageUsersView,
-      meta: { requiresAuth: true, requiredRoles: ['admin'] },
     },
     {
       path: "/gestionar-coordinadores",
