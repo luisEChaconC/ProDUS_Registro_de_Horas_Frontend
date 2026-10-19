@@ -2,12 +2,18 @@
   <header class="app-header">
     <div class="header-content">
       <div class="header-branding">
-        <h1 class="brand-title">{{ title }}</h1>
-        <p class="brand-subtitle">{{ subtitle }}</p>
+        <img
+          class="title-image"
+          src="/titulo.png"
+          :alt="`${title} - ${subtitle}`"
+        />
+      </div>
+      <div class="header-banner">
+        <img src="/banner.png" alt="ProDUS" />
       </div>
       <div class="header-user">
         <div class="user-info">
-          <span class="user-role">{{ userRole }}</span>
+          <span class="user-role">{{ displayRole }}</span>
           <span class="user-name">{{ userName }}</span>
         </div>
         <button 
@@ -23,14 +29,29 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
+import { ROLES, type UserRole } from '@/config/roles'
 
-defineProps<{
+const props = defineProps<{
   title: string
   subtitle: string
   userRole: string
   userName: string
 }>()
+
+const displayRole = computed(() => {
+  const normalizedRole = props.userRole.trim().toLowerCase()
+  const roleAliases: Record<string, UserRole> = {
+    admin: 'admin',
+    administrador: 'admin',
+    coordinador: 'coordinador',
+    coordinator: 'coordinador',
+    asistente: 'asistente',
+    assistant: 'asistente',
+  }
+  const role = roleAliases[normalizedRole]
+  return role ? ROLES[role].label : props.userRole
+})
 
 const emit = defineEmits<{
   logout: []
@@ -50,32 +71,44 @@ const handleLogout = async () => {
 
 <style scoped>
 .app-header {
-  background: linear-gradient(135deg, #003d7a 0%, #00254d 100%);
+  background-color: #061b4b;
   color: white;
   padding: 1.5rem 0;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: none;
 }
 
 .header-content {
-  max-width: 1200px;
+  max-width: 1600px;
   margin: 0 auto;
   padding: 0 2rem;
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(300px, 2.5fr) auto;
+  gap: 2rem;
   align-items: center;
 }
 
-.header-branding h1 {
-  font-size: 2rem;
-  font-weight: 700;
-  margin-bottom: 0.25rem;
-  margin: 0;
+.header-branding {
+  min-width: 0;
 }
 
-.header-branding p {
-  font-size: 0.875rem;
-  opacity: 0.9;
-  margin: 0;
+.title-image {
+  display: block;
+  width: min(100%, 260px);
+  height: auto;
+  max-height: 100px;
+  object-fit: contain;
+  object-position: left center;
+}
+
+.header-banner {
+  min-width: 0;
+}
+
+.header-banner img {
+  display: block;
+  width: 100%;
+  max-height: 110px;
+  object-fit: cover;
 }
 
 .header-user {
@@ -125,8 +158,17 @@ const handleLogout = async () => {
 
 @media (max-width: 768px) {
   .header-content {
-    flex-direction: column;
+    grid-template-columns: 1fr;
     gap: 1.5rem;
+  }
+
+  .header-branding,
+  .header-banner {
+    width: 100%;
+  }
+
+  .title-image {
+    margin: 0 auto;
   }
 
   .header-user {
