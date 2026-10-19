@@ -459,6 +459,8 @@ const removeScheduleBlock = (index: number) => {
 
 const saveAssistantEditor = async () => {
   if (!editingAssistant.value) return
+  if (!window.confirm(`¿Deseas actualizar la información del asistente "${editForm.username}"?`)) return
+
   editSaving.value = true
   editFieldErrors.value = {}
   try {
