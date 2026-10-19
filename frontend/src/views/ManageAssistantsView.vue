@@ -163,7 +163,6 @@ const formatReportDate = (value: string | null) => {
 const formatReactivationDate = (value: string) =>
   new Intl.DateTimeFormat('es-MX', {
     dateStyle: 'medium',
-    timeStyle: 'short',
   }).format(new Date(value))
 
 const loadAssistants = async () => {
