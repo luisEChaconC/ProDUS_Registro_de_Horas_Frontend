@@ -169,7 +169,6 @@ const menuOptions = computed(() => {
       { label: 'Reportes del Proyecto', path: '/reportes-proyecto' }
     ],
     admin: [
-      { label: 'Gestionar Usuarios', path: '/usuarios' },
       { label: 'Gestionar Asistentes', path: '/gestionar-asistentes' },
       { label: 'Gestionar Coordinadores', path: '/gestionar-coordinadores' },
       { label: 'Gestionar Proyectos', path: '/gestionar-proyectos' }
