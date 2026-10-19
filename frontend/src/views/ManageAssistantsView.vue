@@ -160,11 +160,19 @@ const formatReportDate = (value: string | null) => {
   }).format(new Date(value))
 }
 
-const formatReactivationDate = (value: string) =>
-  new Intl.DateTimeFormat('es-MX', {
+const formatReactivationDate = (value: string) => {
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(value)
+    ? new Date(
+        Number(value.substring(0, 4)),
+        Number(value.substring(5, 7)) - 1,
+        Number(value.substring(8, 10)),
+      )
+    : new Date(value)
+
+  return new Intl.DateTimeFormat('es-MX', {
     dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(new Date(value))
+  }).format(date)
+}
 
 const loadAssistants = async () => {
   assistantsLoading.value = true
