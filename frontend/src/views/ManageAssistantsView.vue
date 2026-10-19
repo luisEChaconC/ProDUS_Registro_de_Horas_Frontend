@@ -160,6 +160,12 @@ const formatReportDate = (value: string | null) => {
   }).format(new Date(value))
 }
 
+const formatReactivationDate = (value: string) =>
+  new Intl.DateTimeFormat('es-MX', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date(value))
+
 const loadAssistants = async () => {
   assistantsLoading.value = true
   try {
@@ -732,6 +738,9 @@ onMounted(() => {
                   <option :value="true">Activo</option>
                   <option :value="false">Inactivo</option>
                 </select>
+                <p v-if="editingAssistant" class="reactivation-date">
+                  Última reactivación: {{ formatReactivationDate(editingAssistant.last_reactivation_date) }}
+                </p>
               </label>
               <label>Horas semanales <input v-model.number="editForm.weekly_hours" :class="{ 'edit-field-error': hasEditFieldError('weekly_hours') }" type="number" min="1" required /></label>
               <label>Fecha de inicio <input v-model="editForm.start_date" :class="{ 'edit-field-error': hasEditFieldError('start_date') }" type="date" required /></label>
@@ -1080,6 +1089,7 @@ th { background: #f8fafc; color: #003d7a; }
 .close-button { border: 0; background: transparent; font-size: 1.8rem; cursor: pointer; }
 .edit-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
 .edit-grid label { display: flex; flex-direction: column; gap: .4rem; font-weight: 600; }
+.reactivation-date { margin: 0; color: #6b7280; font-size: .85rem; font-weight: 400; }
 .edit-grid input, .edit-grid select, .schedule-edit-row input, .schedule-edit-row select, .report-edit-row input {
   min-width: 0; padding: .55rem; border: 1px solid var(--color-border); border-radius: 6px; font: inherit;
 }

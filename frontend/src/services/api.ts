@@ -112,6 +112,7 @@ export interface AssistantAdminDetail {
   username: string;
   full_name: string;
   is_active: boolean;
+  last_reactivation_date: string;
   start_date: string;
   end_date: string | null;
   weekly_hours: number;
