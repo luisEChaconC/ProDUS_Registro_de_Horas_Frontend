@@ -13,7 +13,7 @@
       </div>
       <div class="header-user">
         <div class="user-info">
-          <span class="user-role">{{ userRole }}</span>
+          <span class="user-role">{{ displayRole }}</span>
           <span class="user-name">{{ userName }}</span>
         </div>
         <button 
@@ -29,14 +29,29 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
+import { ROLES, type UserRole } from '@/config/roles'
 
-defineProps<{
+const props = defineProps<{
   title: string
   subtitle: string
   userRole: string
   userName: string
 }>()
+
+const displayRole = computed(() => {
+  const normalizedRole = props.userRole.trim().toLowerCase()
+  const roleAliases: Record<string, UserRole> = {
+    admin: 'admin',
+    administrador: 'admin',
+    coordinador: 'coordinador',
+    coordinator: 'coordinador',
+    asistente: 'asistente',
+    assistant: 'asistente',
+  }
+  const role = roleAliases[normalizedRole]
+  return role ? ROLES[role].label : props.userRole
+})
 
 const emit = defineEmits<{
   logout: []
