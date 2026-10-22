@@ -15,6 +15,7 @@ const assistantsCount = ref(0)
 const activeUsersCount = ref(0)
 const activeAssistantsCount = ref(0)
 const activeProjectsCount = ref(0)
+const pendingRequestsCount = ref(0)
 const registeredHours = ref('0 h 0 min')
 const deficitHours = ref('0 h 0 min')
 const deficitSeconds = ref(0)
@@ -53,6 +54,15 @@ const loadAdminSummary = async () => {
     activeAssistantsCount.value = 0
     activeProjectsCount.value = 0
     console.warn('No se pudo cargar el resumen administrativo:', error)
+  }
+}
+
+const loadPendingRequests = async () => {
+  try {
+    pendingRequestsCount.value = (await api.listRequests(false)).length
+  } catch (error) {
+    pendingRequestsCount.value = 0
+    console.warn('No se pudieron cargar las solicitudes pendientes:', error)
   }
 }
 
@@ -132,10 +142,14 @@ watch(
     }
     if (role === 'admin') {
       void loadAdminSummary()
+      void loadPendingRequests()
+    } else if (role === 'asistente') {
+      void loadPendingRequests()
     } else {
       activeUsersCount.value = 0
       activeAssistantsCount.value = 0
       activeProjectsCount.value = 0
+      pendingRequestsCount.value = 0
     }
 
     if (role === 'asistente') {
@@ -173,7 +187,7 @@ const menuOptions = computed(() => {
       { label: 'Gestionar Asistentes', path: '/gestionar-asistentes' },
       { label: 'Gestionar Coordinadores', path: '/gestionar-coordinadores' },
       { label: 'Gestionar Proyectos', path: '/gestionar-proyectos' },
-      { label: 'Notificaciones', path: '/solicitudes' },
+      { label: 'Solicitudes de cambio', path: '/solicitudes' },
     ]
   }
 
@@ -265,7 +279,7 @@ const handleLogout = async () => {
             <span>Balance de horas</span>
             <strong>{{ deficitSeconds < 0 ? '-' : '+' }}{{ deficitHours }}</strong>
           </div>
-          <InfoCard label="Pendiente de Valoración" value="0" />
+          <InfoCard label="Solicitudes pendientes de valoración" :value="String(pendingRequestsCount)" />
         </div>
       </section>
 
@@ -282,6 +296,7 @@ const handleLogout = async () => {
         <div class="info-cards">
           <InfoCard label="Asistentes Activos" :value="String(activeAssistantsCount)" />
           <InfoCard label="Proyectos Activos" :value="String(activeProjectsCount)" />
+          <InfoCard label="Solicitudes pendientes de valoración" :value="String(pendingRequestsCount)" />
         </div>
       </section>
     </div>
