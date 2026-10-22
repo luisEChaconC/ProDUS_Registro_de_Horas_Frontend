@@ -240,6 +240,15 @@ export interface UserRequest {
   request_type: 'horario' | 'reporte';
   request_type_label: string;
   message: string;
+  report: number | null;
+  report_summary: {
+    id: number;
+    check_in: string;
+    check_out: string | null;
+    project_name: string | null;
+    activities: string;
+    work_description: string;
+  } | null;
   is_attended: boolean;
   attended_at: string | null;
   status: 'pendiente' | 'atendido';
@@ -547,6 +556,7 @@ class ApiService {
     admin: number;
     request_type: UserRequest['request_type'];
     message: string;
+    report?: number | null;
   }): Promise<UserRequest> {
     const response = await this.post<{ ok: boolean; request: UserRequest }>('/requests/', payload);
     return response.request;

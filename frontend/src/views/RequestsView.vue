@@ -37,6 +37,15 @@
             <option value="reporte">Cambio en reporte</option>
           </select>
         </label>
+        <label v-if="form.request_type === 'reporte'">
+          Reporte relacionado
+          <select v-model="form.report" required>
+            <option value="" disabled>Selecciona un reporte</option>
+            <option v-for="report in reports" :key="report.id" :value="report.id">
+              {{ formatReportOption(report) }}
+            </option>
+          </select>
+        </label>
         <label>
           Describe el cambio requerido
           <textarea v-model="form.message" rows="5" required minlength="1" />
@@ -64,7 +73,12 @@
             <span :class="['status', item.is_attended ? 'done' : 'pending']">
               {{ item.is_attended ? 'Atendido' : 'Pendiente' }}
             </span>
-            <button class="secondary" type="button" @click="openDetails(item)">Ver detalles</button>
+            <div class="row-actions">
+              <button v-if="isAdmin && !item.is_attended" class="attend" type="button" @click="attendRequest(item)">
+                Atender
+              </button>
+              <button class="secondary" type="button" @click="openDetails(item)">Ver detalles</button>
+            </div>
           </article>
         </div>
       </section>
@@ -79,6 +93,10 @@
           <dt>Tipo</dt><dd>{{ selectedRequest.request_type_label }}</dd>
           <dt>Fecha de creación</dt><dd>{{ formatDate(selectedRequest.created_at) }}</dd>
           <dt>Estado</dt><dd>{{ selectedRequest.is_attended ? 'Atendido' : 'Pendiente' }}</dd>
+          <template v-if="selectedRequest.report_summary">
+          <dt>Reporte relacionado</dt>
+          <dd>{{ formatReportOption(selectedRequest.report_summary) }}</dd>
+          </template>
           <dt>Mensaje</dt><dd class="message">{{ selectedRequest.message }}</dd>
         </dl>
         <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
@@ -102,12 +120,13 @@ import { useRouter } from 'vue-router'
 import AppHeader from '@/components/AppHeader.vue'
 import { useAuth } from '@/composables/useAuth'
 import { ROLES } from '@/config/roles'
-import api, { type RequestAdminOption, type UserRequest } from '@/services/api'
+import api, { type RequestAdminOption, type TimeLogSession, type UserRequest } from '@/services/api'
 
 const router = useRouter()
 const { userRole, userName, logout } = useAuth()
 const isAdmin = computed(() => userRole.value === 'admin')
 const admins = ref<RequestAdminOption[]>([])
+const reports = ref<TimeLogSession[]>([])
 const requests = ref<UserRequest[]>([])
 const selectedRequest = ref<UserRequest | null>(null)
 const showAttended = ref(false)
@@ -115,14 +134,17 @@ const showForm = ref(true)
 const loading = ref(false)
 const saving = ref(false)
 const errorMessage = ref('')
-const form = reactive<{ admin: number | ''; request_type: UserRequest['request_type']; message: string }>({
+const form = reactive<{ admin: number | ''; request_type: UserRequest['request_type']; report: number | ''; message: string }>({
   admin: '',
   request_type: 'horario',
+  report: '',
   message: '',
 })
 
 const getRoleLabel = () => userRole.value ? ROLES[userRole.value]?.label || userRole.value : 'Usuario'
 const formatDate = (value: string) => new Date(value).toLocaleString('es-CR')
+const formatReportOption = (report: { id: number; check_in: string; check_out: string | null; project_name?: string | null }) =>
+  `${formatDate(report.check_in)}${report.project_name ? ` - ${report.project_name}` : ''}`
 
 const loadRequests = async (attended: boolean) => {
   showAttended.value = attended
@@ -147,8 +169,14 @@ const submitRequest = async () => {
   saving.value = true
   errorMessage.value = ''
   try {
-    await api.createRequest({ admin: form.admin, request_type: form.request_type, message: form.message })
+    await api.createRequest({
+      admin: form.admin,
+      request_type: form.request_type,
+      report: form.request_type === 'reporte' && form.report !== '' ? form.report : null,
+      message: form.message,
+    })
     form.message = ''
+    form.report = ''
     showForm.value = false
     await loadRequests(false)
   } catch (error) {
@@ -173,6 +201,19 @@ const markAttended = async () => {
   }
 }
 
+const attendRequest = (item: UserRequest) => {
+  if (item.request_type === 'horario') {
+    router.push({ path: '/gestionar-asistentes', query: { editAssistant: String(item.assistant) } })
+    return
+  }
+  if (item.report) {
+    router.push({
+      path: '/gestionar-asistentes',
+      query: { editAssistant: String(item.assistant), editReport: String(item.report) },
+    })
+  }
+}
+
 const handleLogout = async () => {
   await logout()
   router.push('/login')
@@ -181,7 +222,12 @@ const handleLogout = async () => {
 onMounted(async () => {
   if (!isAdmin.value) {
     try {
-      admins.value = await api.listRequestAdmins()
+      const [availableAdmins, ownReports] = await Promise.all([
+        api.listRequestAdmins(),
+        api.getWorkSessionReports(),
+      ])
+      admins.value = availableAdmins
+      reports.value = ownReports.results
     } catch (error) {
       errorMessage.value = error instanceof Error ? error.message : 'No se pudieron cargar los administradores.'
     }
@@ -203,6 +249,7 @@ select, textarea { border: 1px solid #cbd5e1; border-radius: 7px; padding: .65re
 button { border: 0; border-radius: 7px; padding: .65rem 1rem; font-weight: 700; cursor: pointer; }
 button:disabled { opacity: .6; cursor: not-allowed; }
 .primary { background: #0052a3; color: white; } .secondary { background: #e2e8f0; color: #1e3a5f; }
+.attend { background: #16a34a; color: white; } .row-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
 .tabs { display: flex; gap: .5rem; border-bottom: 1px solid #e2e8f0; margin-bottom: 1rem; }
 .tabs button { background: transparent; color: #64748b; border-radius: 0; } .tabs .selected { color: #0052a3; border-bottom: 3px solid #0052a3; }
 .request-list { display: grid; gap: .75rem; } .request-row { display: grid; grid-template-columns: 1fr auto auto; gap: 1rem; align-items: center; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; }

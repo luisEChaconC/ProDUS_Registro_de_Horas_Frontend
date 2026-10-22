@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import AppHeader from '@/components/AppHeader.vue'
 import AppButton from '@/components/AppButton.vue'
 import GenericForm from '@/components/GenericForm.vue'
@@ -12,6 +12,7 @@ import { useToast } from '@/composables/useToast'
 import api, { ApiError, getApiErrorMessages, type AssistantAdminDetail, type AssistantReport, type CoordinatorOption, type ProjectOption, type ScheduleBlockInput } from '@/services/api'
 
 const router = useRouter()
+const route = useRoute()
 const { userRole, userName, userId, logout } = useAuth()
 const { showToast } = useToast()
 const showAssistantForm = ref(false)
@@ -305,14 +306,27 @@ const closeAssistantEditor = () => {
   editingAssistant.value = null
 }
 
-const openAssistantReports = async (assistantId: number) => {
+const openAssistantReports = async (assistantId: number, useCurrentWeek = true) => {
   showReportsModal.value = true
   reportsError.value = ''
   reportSuccess.value = ''
   reportsScope.value = 'assistant'
   reportsAssistant.value = assistants.value.find((assistant) => assistant.id === assistantId) || null
-  setCurrentReportWeek()
+  if (useCurrentWeek) setCurrentReportWeek()
   await loadAssistantReports(assistantId)
+}
+
+const openRequestedReport = async (assistantId: number, reportId: number) => {
+  reportsScope.value = 'assistant'
+  reportStartDate.value = ''
+  reportEndDate.value = ''
+  await openAssistantReports(assistantId, false)
+  const requestedReport = assistantReports.value.find((report) => report.id === reportId)
+  if (requestedReport) {
+    openReportDetails(requestedReport)
+  } else {
+    reportsError.value = 'El reporte relacionado ya no está disponible.'
+  }
 }
 
 const getCurrentDateTimeInput = () => {
@@ -622,8 +636,16 @@ const goBack = () => {
   router.back()
 }
 
-onMounted(() => {
-  loadAssistants()
+onMounted(async () => {
+  await loadAssistants()
+  const assistantId = Number(route.query.editAssistant)
+  if (!Number.isInteger(assistantId) || assistantId <= 0) return
+  const reportId = Number(route.query.editReport)
+  if (Number.isInteger(reportId) && reportId > 0) {
+    await openRequestedReport(assistantId, reportId)
+  } else {
+    await openAssistantEditor(assistantId)
+  }
 })
 </script>
 
