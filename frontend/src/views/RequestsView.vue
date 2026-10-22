@@ -115,7 +115,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import AppHeader from '@/components/AppHeader.vue'
 import { useAuth } from '@/composables/useAuth'
@@ -146,6 +146,15 @@ const formatDate = (value: string) => new Date(value).toLocaleString('es-CR')
 const formatReportOption = (report: { id: number; check_in: string; check_out: string | null; project_name?: string | null }) =>
   `${formatDate(report.check_in)}${report.project_name ? ` - ${report.project_name}` : ''}`
 
+watch(
+  () => form.request_type,
+  (requestType) => {
+    if (requestType === 'horario') {
+      form.report = ''
+    }
+  },
+)
+
 const loadRequests = async (attended: boolean) => {
   showAttended.value = attended
   loading.value = true
@@ -169,12 +178,20 @@ const submitRequest = async () => {
   saving.value = true
   errorMessage.value = ''
   try {
-    await api.createRequest({
+    const payload: {
+      admin: number
+      request_type: UserRequest['request_type']
+      message: string
+      report?: number
+    } = {
       admin: form.admin,
       request_type: form.request_type,
-      report: form.request_type === 'reporte' && form.report !== '' ? form.report : null,
       message: form.message,
-    })
+    }
+    if (form.request_type === 'reporte' && form.report !== '') {
+      payload.report = form.report
+    }
+    await api.createRequest(payload)
     form.message = ''
     form.report = ''
     showForm.value = false
