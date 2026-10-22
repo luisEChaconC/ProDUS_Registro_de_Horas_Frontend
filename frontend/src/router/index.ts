@@ -8,6 +8,7 @@ import HorariosView from "../views/HorariosView.vue";
 import ReportesView from "../views/ReportesView.vue";
 import ManageManagersView from "../views/ManageCoordinatorsView.vue";
 import ManageProjectsView from "../views/ManageProjectsView.vue";
+import RequestsView from "../views/RequestsView.vue";
 
 // Extender tipo de RouteMeta para agregar requiredRoles
 declare module "vue-router" {
@@ -131,6 +132,12 @@ const router = createRouter({
       name: "manage-projects",
       component: ManageProjectsView,
       meta: { requiresAuth: true, requiredRoles: ['admin'] },
+    },
+    {
+      path: "/solicitudes",
+      name: "requests",
+      component: RequestsView,
+      meta: { requiresAuth: true, requiredRoles: ['asistente', 'admin'] },
     },
   ],
 });
