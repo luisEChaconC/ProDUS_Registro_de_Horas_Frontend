@@ -162,7 +162,8 @@ const menuOptions = computed(() => {
     asistente: [
       { label: 'Registro de Horas', path: '/registro-horas' },
       { label: 'Mis Horarios', path: '/horarios' },
-      { label: 'Mis Reportes', path: '/reportes' }
+      { label: 'Mis Reportes', path: '/reportes' },
+      { label: 'Solicitudes de cambio', path: '/solicitudes' },
     ],
     coordinador: [
       { label: 'Gestionar Equipo', path: '/equipo' },
@@ -171,7 +172,8 @@ const menuOptions = computed(() => {
     admin: [
       { label: 'Gestionar Asistentes', path: '/gestionar-asistentes' },
       { label: 'Gestionar Coordinadores', path: '/gestionar-coordinadores' },
-      { label: 'Gestionar Proyectos', path: '/gestionar-proyectos' }
+      { label: 'Gestionar Proyectos', path: '/gestionar-proyectos' },
+      { label: 'Notificaciones', path: '/solicitudes' },
     ]
   }
 

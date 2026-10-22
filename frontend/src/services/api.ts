@@ -224,6 +224,27 @@ export interface CoordinatorOption {
   username: string;
 }
 
+export interface RequestAdminOption {
+  id: number;
+  full_name: string;
+  username: string;
+}
+
+export interface UserRequest {
+  id: number;
+  admin: number;
+  admin_name: string;
+  assistant: number;
+  assistant_name: string;
+  created_at: string;
+  request_type: 'horario' | 'reporte';
+  request_type_label: string;
+  message: string;
+  is_attended: boolean;
+  attended_at: string | null;
+  status: 'pendiente' | 'atendido';
+}
+
 interface OptionsResponse<T> {
   ok: boolean;
   results: T[];
@@ -509,6 +530,39 @@ class ApiService {
   // lista de asistentes
   async listAssistants(): Promise<ListAssistantsResponse> {
     return this.request<ListAssistantsResponse>("/users/assistants/list/");
+  }
+
+  async listRequestAdmins(): Promise<RequestAdminOption[]> {
+    const response = await this.request<{ ok: boolean; results: RequestAdminOption[] }>('/requests/admins/');
+    return response.results;
+  }
+
+  async listRequests(attended?: boolean): Promise<UserRequest[]> {
+    const query = attended === undefined ? '' : `?attended=${attended}`;
+    const response = await this.request<{ ok: boolean; results: UserRequest[] }>(`/requests/${query}`);
+    return response.results;
+  }
+
+  async createRequest(payload: {
+    admin: number;
+    request_type: UserRequest['request_type'];
+    message: string;
+  }): Promise<UserRequest> {
+    const response = await this.post<{ ok: boolean; request: UserRequest }>('/requests/', payload);
+    return response.request;
+  }
+
+  async getRequest(id: number): Promise<UserRequest> {
+    const response = await this.request<{ ok: boolean; request: UserRequest }>(`/requests/${id}/`);
+    return response.request;
+  }
+
+  async markRequestAttended(id: number): Promise<UserRequest> {
+    const response = await this.patch<{ ok: boolean; request: UserRequest }>(
+      `/requests/${id}/`,
+      { is_attended: true },
+    );
+    return response.request;
   }
 
   async getAdminSummary(): Promise<AdminSummaryResponse> {
