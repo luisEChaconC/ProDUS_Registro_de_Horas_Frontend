@@ -31,6 +31,17 @@ interface LoginCredentials {
   password: string;
 }
 
+export interface PasswordResetRequestResponse {
+  ok: boolean;
+  detail: string;
+  retry_after: number;
+}
+
+export interface PasswordResetVerifyResponse {
+  ok: boolean;
+  reset_token: string;
+}
+
 interface AuthTokens {
   ok?: boolean;
   access: string;
@@ -57,7 +68,7 @@ interface CheckIPResponse {
 interface CreateAssistantPayload {
   username: string;
   full_name: string;
-email?: string | null;
+  email?: string | null;
   password?: string;
   password_confirm?: string;
   start_date: string;
@@ -112,7 +123,7 @@ export interface AssistantAdminDetail {
   id: number;
   username: string;
   full_name: string;
-email: string | null;
+  email: string | null;
   is_active: boolean;
   last_reactivation_date: string;
   start_date: string;
@@ -137,7 +148,7 @@ export interface UserListItem {
   id: number;
   full_name: string;
   username: string;
-email: string | null;
+  email: string | null;
   role: string | null;
   is_admin: boolean;
   is_active: boolean;
@@ -460,6 +471,41 @@ class ApiService {
     return data;
   }
 
+  async requestPasswordReset(username: string): Promise<PasswordResetRequestResponse> {
+    return this.request<PasswordResetRequestResponse>(
+      "/users/auth/password-reset/request/",
+      { method: "POST", body: JSON.stringify({ username }) },
+      false,
+    );
+  }
+
+  async verifyPasswordReset(username: string, code: string): Promise<PasswordResetVerifyResponse> {
+    return this.request<PasswordResetVerifyResponse>(
+      "/users/auth/password-reset/verify/",
+      { method: "POST", body: JSON.stringify({ username, code }) },
+      false,
+    );
+  }
+
+  async confirmPasswordReset(
+    resetToken: string,
+    newPassword: string,
+    newPasswordConfirm: string,
+  ): Promise<{ ok: boolean; detail: string }> {
+    return this.request(
+      "/users/auth/password-reset/confirm/",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          reset_token: resetToken,
+          new_password: newPassword,
+          new_password_confirm: newPasswordConfirm,
+        }),
+      },
+      false,
+    );
+  }
+
   /**
    * Verifica si la IP del cliente está permitida.
    */
@@ -681,7 +727,7 @@ class ApiService {
   async createCoordinator(payload: {
     username: string;
     full_name: string;
-email?: string | null;
+    email?: string | null;
     password: string;
     password_confirm: string;
     project_ids?: number[];
@@ -696,7 +742,7 @@ email?: string | null;
   async updateCoordinator(id: number, payload: {
     username: string;
     full_name: string;
-email?: string | null;
+    email?: string | null;
     is_active: boolean;
     project_ids: number[];
   }): Promise<UserListItem> {

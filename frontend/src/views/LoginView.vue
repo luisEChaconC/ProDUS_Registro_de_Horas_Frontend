@@ -1,13 +1,21 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import api from '@/services/api'
 
+const route = useRoute()
+const router = useRouter()
 const username = ref('')
 const password = ref('')
 const errorMessage = ref('')
+const successMessage = ref('')
 const loading = ref(false)
-const router = useRouter()
+
+onMounted(() => {
+  if (route.query.reset === 'success') {
+    successMessage.value = 'Contraseña restablecida correctamente. Ya puedes iniciar sesión.'
+  }
+})
 
 async function handleLogin() {
   errorMessage.value = ''
@@ -29,6 +37,7 @@ async function handleLogin() {
 <template>
   <div class="login-container">
     <h2>Iniciar sesión</h2>
+    <div v-if="successMessage" class="success">{{ successMessage }}</div>
     <form @submit.prevent="handleLogin">
       <div>
         <label for="username">Usuario</label>
@@ -39,6 +48,7 @@ async function handleLogin() {
         <input id="password" type="password" v-model="password" autocomplete="current-password" />
       </div>
       <button type="submit" :disabled="loading">Entrar</button>
+      <RouterLink class="forgot-link" to="/recuperar-contrasena">¿Olvidaste tu contraseña?</RouterLink>
       <div v-if="errorMessage" class="error">{{ errorMessage }}</div>
     </form>
   </div>
@@ -81,9 +91,24 @@ button:disabled {
   background: #90caf9;
   cursor: not-allowed;
 }
+.success {
+  color: #166534;
+  background: #dcfce7;
+  padding: 0.75rem;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+  text-align: center;
+  font-size: 0.9rem;
+}
 .error {
   color: #d32f2f;
   margin-top: 1rem;
   text-align: center;
+}
+.forgot-link {
+  display: block;
+  margin-top: 1rem;
+  text-align: center;
+  color: #1976d2;
 }
 </style>

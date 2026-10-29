@@ -9,6 +9,8 @@ import ReportesView from "../views/ReportesView.vue";
 import ManageManagersView from "../views/ManageCoordinatorsView.vue";
 import ManageProjectsView from "../views/ManageProjectsView.vue";
 import RequestsView from "../views/RequestsView.vue";
+import ForgotPasswordView from "../views/ForgotPasswordView.vue";
+import ResetPasswordView from "../views/ResetPasswordView.vue";
 
 // Extender tipo de RouteMeta para agregar requiredRoles
 declare module "vue-router" {
@@ -84,6 +86,8 @@ const router = createRouter({
       name: "login-page",
       component: LoginView,
     },
+    { path: "/recuperar-contrasena", name: "forgot-password", component: ForgotPasswordView },
+    { path: "/restablecer-contrasena", name: "reset-password", component: ResetPasswordView },
     {
       path: "/home",
       name: "home",
