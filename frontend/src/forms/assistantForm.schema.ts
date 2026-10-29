@@ -23,6 +23,18 @@ const userFields = [
     spaceAfter: 'sm'
   },
   {
+    name: 'email',
+    label: 'Correo institucional (ucr.ac.cr)',
+    type: 'email',
+    placeholder: 'usuario@ucr.ac.cr',
+    required: false,
+    // pattern: '^[^\\s@]+@[uU][cC][rR]\\.[aA][cC]\\.[cC][rR]$',
+    patternMessage: 'Debe ser un correo del dominio ucr.ac.cr',
+    order: 3,
+    span: 1,
+    spaceAfter: 'sm'
+  },
+  {
     name: 'password',
     label: 'Contraseña',
     type: 'password',
@@ -30,7 +42,7 @@ const userFields = [
     required: true,
     pattern: '^(?=.*[A-Z])(?=.*\\d).{8,}$',
     patternMessage: 'Debe tener mínimo 8 caracteres, una mayúscula y un número',
-    order: 3,
+    order: 4,
     span: 1,
     spaceAfter: 'sm'
   },
@@ -40,7 +52,7 @@ const userFields = [
     type: 'password',
     placeholder: 'Repite la contraseña',
     required: true,
-    order: 4,
+    order: 5,
     span: 1,
     spaceAfter: 'lg'
   },
@@ -55,7 +67,7 @@ const assistantFields = [
     label: 'Fecha de inicio',
     type: 'date',
     required: true,
-    order: 6,
+    order: 7,
     span: 1,
     spaceAfter: 'sm'
   },
@@ -64,7 +76,7 @@ const assistantFields = [
     label: 'Fecha de fin',
     type: 'date',
     required: false,
-    order: 7,
+    order: 8,
     span: 1,
     spaceAfter: 'sm'
   },
@@ -74,7 +86,7 @@ const assistantFields = [
     type: 'number',
     placeholder: 'Ej: 10',
     required: true,
-    order: 8,
+    order: 9,
     span: 1,
     spaceAfter: 'none'
   }

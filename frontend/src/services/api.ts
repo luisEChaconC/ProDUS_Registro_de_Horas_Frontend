@@ -57,6 +57,7 @@ interface CheckIPResponse {
 interface CreateAssistantPayload {
   username: string;
   full_name: string;
+email?: string | null;
   password?: string;
   password_confirm?: string;
   start_date: string;
@@ -111,6 +112,7 @@ export interface AssistantAdminDetail {
   id: number;
   username: string;
   full_name: string;
+email: string | null;
   is_active: boolean;
   last_reactivation_date: string;
   start_date: string;
@@ -135,6 +137,7 @@ export interface UserListItem {
   id: number;
   full_name: string;
   username: string;
+email: string | null;
   role: string | null;
   is_admin: boolean;
   is_active: boolean;
@@ -678,6 +681,7 @@ class ApiService {
   async createCoordinator(payload: {
     username: string;
     full_name: string;
+email?: string | null;
     password: string;
     password_confirm: string;
     project_ids?: number[];
@@ -692,6 +696,7 @@ class ApiService {
   async updateCoordinator(id: number, payload: {
     username: string;
     full_name: string;
+email?: string | null;
     is_active: boolean;
     project_ids: number[];
   }): Promise<UserListItem> {

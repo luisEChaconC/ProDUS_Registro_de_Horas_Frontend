@@ -23,6 +23,18 @@ const userFields = [
     spaceAfter: 'sm'
   },
   {
+    name: 'email',
+    label: 'Correo institucional (ucr.ac.cr)',
+    type: 'email',
+    placeholder: 'usuario@ucr.ac.cr',
+    required: false,
+    // pattern: '^[^\\s@]+@[uU][cC][rR]\\.[aA][cC]\\.[cC][rR]$',
+    patternMessage: 'Debe ser un correo del dominio ucr.ac.cr',
+    order: 3,
+    span: 1,
+    spaceAfter: 'sm'
+  },
+  {
     name: 'password',
     label: 'Contraseña',
     type: 'password',
@@ -30,7 +42,7 @@ const userFields = [
     required: true,
     pattern: '^(?=.*[A-Z])(?=.*\\d).{8,}$',
     patternMessage: 'Debe tener mínimo 8 caracteres, una mayúscula y un número',
-    order: 3,
+    order: 4,
     span: 1,
     spaceAfter: 'sm'
   },
@@ -40,7 +52,7 @@ const userFields = [
     type: 'password',
     placeholder: 'Repite la contraseña',
     required: true,
-    order: 4,
+    order: 5,
     span: 1,
     spaceAfter: 'lg'
   },
@@ -55,7 +67,7 @@ const coordinatorFields = [
     label: 'Usuario activo',
     type: 'checkbox',
     defaultValue: true,
-    order: 5,
+    order: 6,
     span: 1,
     spaceAfter: 'sm'
   },
@@ -66,7 +78,7 @@ const coordinatorFields = [
     multiple: true,
     options: [],
     required: false,
-    order: 6,
+    order: 7,
     span: 2,
     spaceAfter: 'lg'
   }

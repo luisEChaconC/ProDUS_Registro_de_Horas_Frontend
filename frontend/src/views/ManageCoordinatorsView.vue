@@ -17,7 +17,7 @@ const saving = ref(false)
 const formErrors = ref<Record<string, string>>({})
 const showModal = ref(false)
 const editingCoordinator = ref<UserListItem | null>(null)
-const form = reactive({ username: '', full_name: '', password: '', password_confirm: '', is_active: true, project_ids: [] as number[] })
+const form = reactive({ username: '', full_name: '', email: '', password: '', password_confirm: '', is_active: true, project_ids: [] as number[] })
 const projects = ref<ProjectOption[]>([])
 const formInitialValues = ref<Record<string, unknown>>({})
 const coordinatorFields = coordinatorFormFields
@@ -36,6 +36,7 @@ const updateProjectOptions = () => {
 const resetForm = () => Object.assign(form, {
   username: '',
   full_name: '',
+  email: '',
   password: '',
   password_confirm: '',
   is_active: true,
@@ -69,10 +70,11 @@ const openCreate = () => {
 const openEdit = (coordinator: UserListItem) => {
   formErrors.value = {}
   editingCoordinator.value = coordinator
-  Object.assign(form, { username: coordinator.username, full_name: coordinator.full_name, is_active: coordinator.is_active, password: '', password_confirm: '' })
+  Object.assign(form, { username: coordinator.username, full_name: coordinator.full_name, email: coordinator.email || '', is_active: coordinator.is_active, password: '', password_confirm: '' })
   formInitialValues.value = {
     username: coordinator.username,
     full_name: coordinator.full_name,
+    email: coordinator.email || '',
     is_active: coordinator.is_active,
     project_ids: coordinator.project_ids || [],
   }
@@ -88,6 +90,7 @@ const saveCoordinator = async () => {
       await api.updateCoordinator(editingCoordinator.value.id, {
         username: form.username,
         full_name: form.full_name,
+        email: form.email.trim() || null,
         is_active: form.is_active,
         project_ids: form.project_ids,
       })
@@ -101,6 +104,7 @@ const saveCoordinator = async () => {
       await api.createCoordinator({
         username: form.username,
         full_name: form.full_name,
+        email: form.email.trim() || null,
         password: form.password,
         password_confirm: form.password_confirm,
         project_ids: form.project_ids,

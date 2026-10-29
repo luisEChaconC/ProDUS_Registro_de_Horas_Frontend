@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, reactive, ref } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppHeader from '@/components/AppHeader.vue'
 import AppButton from '@/components/AppButton.vue'
@@ -15,6 +15,12 @@ const router = useRouter()
 const route = useRoute()
 const { userRole, userName, userId, logout } = useAuth()
 const { showToast } = useToast()
+const visibleAssistantFields = computed(() => {
+  if (userRole.value !== 'admin') {
+    return assistantFormFields.filter((f) => f.name !== 'email')
+  }
+  return assistantFormFields
+})
 const showAssistantForm = ref(false)
 const showErrorModal = ref(false)
 const errorMessages = ref<string[]>([])
@@ -72,6 +78,7 @@ const editFieldErrors = ref<Record<string, string>>({})
 const editForm = reactive({
   username: '',
   full_name: '',
+  email: '',
   is_active: true,
   start_date: '',
   end_date: '',
@@ -288,6 +295,7 @@ const openAssistantEditor = async (assistantId: number) => {
     editingAssistant.value = detail
     editForm.username = detail.username
     editForm.full_name = detail.full_name
+    editForm.email = detail.email || ''
     editForm.is_active = detail.is_active
     editForm.start_date = detail.start_date
     editForm.end_date = detail.end_date || ''
@@ -481,6 +489,7 @@ const saveAssistantEditor = async () => {
     await api.updateAssistantAdminDetail(editingAssistant.value.id, {
       username: editForm.username,
       full_name: editForm.full_name,
+      email: editForm.email.trim() || null,
       is_active: editForm.is_active,
       start_date: editForm.start_date,
       end_date: editForm.end_date || null,
@@ -589,6 +598,7 @@ const onConfirmAssistantForm = async (formData: Record<string, any>) => {
     const payload = {
       username: formData.username as string,
       full_name: formData.full_name as string, 
+      email: (formData.email as string || '').trim() || null,
       password: formData.password as string | undefined,
       password_confirm: formData.password_confirm as string | undefined, 
       start_date: formData.start_date ? new Date(formData.start_date as string).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
@@ -712,7 +722,7 @@ onMounted(async () => {
         <div class="new-assistant-modal-card">
           <GenericForm
             title="Nuevo Asistente"
-            :fields="assistantFormFields"
+            :fields="visibleAssistantFields"
             confirm-text="Confirmar"
             cancel-text="Cancelar"
             :external-errors="assistantFormErrors"
@@ -765,6 +775,7 @@ onMounted(async () => {
             <div class="edit-grid">
               <label>Usuario <input v-model.trim="editForm.username" :class="{ 'edit-field-error': hasEditFieldError('username') }" required /></label>
               <label>Nombre completo <input v-model.trim="editForm.full_name" :class="{ 'edit-field-error': hasEditFieldError('full_name') }" required /></label>
+              <label>Correo institucional <input v-model.trim="editForm.email" type="email" placeholder="usuario@ucr.ac.cr" :class="{ 'edit-field-error': hasEditFieldError('email') }" /></label>
               <label>Estado
                 <select v-model="editForm.is_active">
                   <option :value="true">Activo</option>
